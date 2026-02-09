@@ -2,19 +2,31 @@ package com.bootcamp.ecommerce.entity;
 
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.util.UUID;
 
 @Entity
 @Table(name = "customers")
+@Getter
+@Setter
 public class Customer extends Auditable{
 
     @Id
-    private Long userId;
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @Column(name = "id")
+    private UUID id;
 
     @Column(length = 10)
     private String contact;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId
-    @JoinColumn(name = "user_id")
+    @JoinColumn(
+            name = "user_id",
+            nullable = false,
+            unique = true
+    )
     private User user;
 }

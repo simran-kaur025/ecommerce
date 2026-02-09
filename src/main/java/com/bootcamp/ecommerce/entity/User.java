@@ -1,16 +1,31 @@
 package com.bootcamp.ecommerce.entity;
 
 import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
+//import org.springframework.security.core.GrantedAuthority;
+//import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
+
 
 @Entity
 @Table(name = "users")
-public class User extends Auditable{
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+
+public class User extends Auditable {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @Column(name = "id")
+    private UUID id;
 
     @Column(unique = true, nullable = false)
     private String email;
@@ -31,7 +46,6 @@ public class User extends Auditable{
 
     @Column(name = "password_update_date")
     private LocalDateTime passwordUpdateDate;
-
 
     @OneToMany(mappedBy = "user")
     private List<UserRole> userRoles;
