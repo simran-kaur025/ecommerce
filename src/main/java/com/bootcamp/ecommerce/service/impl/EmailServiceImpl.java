@@ -1,6 +1,9 @@
 package com.bootcamp.ecommerce.service.impl;
 
+import com.bootcamp.ecommerce.constant.Constant;
+import com.bootcamp.ecommerce.entity.Product;
 import com.bootcamp.ecommerce.service.EmailService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class EmailServiceImpl implements EmailService {
     @Autowired
     private final JavaMailSender mailSender;
@@ -22,33 +26,99 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
-    public void sendForgotPasswordEmail(String email,String token) {
+    public void sendActivationEmail(String email, String token) {
         try {
-            String resetLink = "http://localhost:8080/users/updatepassword?token=" + token;
-            String emailBody = "Click the link to reset password to your account\n" + resetLink;
-            log.info("Sending forgot password email to: {}", email);
-            sendEmail(email, "Reset Password to Your Account", emailBody);
-        }
-        catch (Exception ex) {
-                log.error("Failed to send forgot password email to {}", email, ex);
+            String activationLink = Constant.ACTIVATE_ACCOUNT_URL + token;
+
+            String body = """
+                    Click the link below to activate your account.
+                    Link is valid for three hours.
+
+                    %s
+                    """.formatted(activationLink);
+
+            sendEmail(email, Constant.ACTIVATE_ACCOUNT_SUBJECT, body);
+
+        } catch (Exception ex) {
+            log.error("Failed to send activation email to {}", email, ex);
         }
     }
 
+    @Async
+    public void sendSellerRegistrationEmail(String toEmail) {
+        try {
+            sendEmail(toEmail,
+                    Constant.SELLER_CREATED_SUBJECT,
+                    Constant.SELLER_BODY);
+
+            log.info("Seller registration email sent to {}", toEmail);
+
+        } catch (Exception ex) {
+            log.error("Failed to send seller email to {}", toEmail, ex);
+        }
+    }
 
     @Async
     @Override
-    public void sendActivationEmail(String email, String token) {
-        String subject = "Activate Your Account";
-        String activationLink = "http://localhost:8080/api/register/customer/activate?token=" + token;
-        String message = "Click the link below to activate your account:\n Link is valid for three hour\n\n" + activationLink;
+    public void sendForgotPasswordEmail(String email, String token) {
+        try {
+            String resetLink = Constant.RESET_PASSWORD_URL + token;
 
-        SimpleMailMessage mailMessage = new SimpleMailMessage();
-        mailMessage.setTo(email);
-        mailMessage.setSubject(subject);
-        mailMessage.setText(message);
+            String body = """
+                    Click the link to reset password to your account
 
-        mailSender.send(mailMessage);
+                    %s
+                    """.formatted(resetLink);
+
+            log.info("Sending forgot password email to {}", email);
+            sendEmail(email, Constant.RESET_PASSWORD_SUBJECT, body);
+
+        } catch (Exception ex) {
+            log.error("Failed to send forgot password email to {}", email, ex);
+        }
     }
+
+
+    @Override
+    public void sendProductActivatedEmail(String toEmail, Product product) {
+
+        String body = String.format("""
+            Product Activated Successfully
+
+            Product Details:
+            Name: %s
+            Brand: %s
+            Description: %s
+            Status: ACTIVE
+            """,
+                product.getName(),
+                product.getBrand(),
+                product.getDescription()
+        );
+
+        sendEmail(toEmail, Constant.PRODUCT_ACTIVATED_SUBJECT, body);
+    }
+
+    @Override
+    public void sendProductDeactivatedEmail(String toEmail, Product product) {
+
+        String body = String.format("""
+            Product Deactivated
+
+            Product Details:
+            Name: %s
+            Brand: %s
+            Description: %s
+            Status: INACTIVE
+            """,
+                product.getName(),
+                product.getBrand(),
+                product.getDescription()
+        );
+
+        sendEmail(toEmail, Constant.PRODUCT_DEACTIVATED_SUBJECT, body);
+    }
+
 
 
     @Async

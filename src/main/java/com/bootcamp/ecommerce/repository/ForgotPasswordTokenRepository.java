@@ -5,10 +5,9 @@ import com.bootcamp.ecommerce.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 public interface ForgotPasswordTokenRepository
-        extends JpaRepository<ForgotPasswordToken, UUID> {
+        extends JpaRepository<ForgotPasswordToken, Long> {
 
     Optional<ForgotPasswordToken> findByToken(String token);
 

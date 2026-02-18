@@ -28,7 +28,6 @@
 
     @Service
     @RequiredArgsConstructor
-    @Transactional
     @Slf4j
     public class RegisterServiceImpl implements RegisterService {
 
@@ -45,18 +44,21 @@
        private final EmailService emailService;
 
 
+        @Transactional
         @Override
         public ResponseDTO registerCustomer(CustomerRequestDTO requestDTO) {
+
             List<UserValidationDTO> errors = new ArrayList<>();
             registerValidationService.validateCustomer(requestDTO, errors);
 
             if (!errors.isEmpty()) {
+                log.error("Customer registration validation failed for email: {}", requestDTO.getEmail());
                 throw new ValidationException(errors);
             }
 
             User user = createUser(requestDTO);
 
-            Role role = roleRepository.findByAuthority("CUSTOMER");
+            Role role = roleRepository.findByAuthority("ROLE_CUSTOMER");
 
             if (role == null) {
                 throw new ResourceNotFoundException("Role not found: " + role);
@@ -77,13 +79,13 @@
                 throw new IllegalStateException("Activation token creation failed");
             }
             try {
-                emailService.sendActivationEmail(
-                        user.getEmail(),
-                        activationToken.getToken()
+                emailService.sendActivationEmail(user.getEmail(), activationToken.getToken()
                 );
             } catch (Exception ex) {
                 log.error("Failed to send activation email for user {}", user.getEmail(), ex);
             }
+            log.info("Customer registered successfully for email: {}", user.getEmail());
+
             return ResponseDTO.builder()
                     .status(Constant.SUCCESS)
                     .message("Customer registered successfully. Please check your email to activate your account.")
@@ -91,6 +93,7 @@
         }
 
 
+        @Transactional
         @Override
         public ResponseDTO registerSeller(SellerRequestDTO requestDTO) {
 
@@ -98,6 +101,7 @@
             registerValidationService.validateSeller(requestDTO, errors);
 
             if (!errors.isEmpty()) {
+                log.error("Seller registration validation failed for email: {}", requestDTO.getEmail());
                 throw new ValidationException(errors);
             }
 
@@ -111,9 +115,10 @@
 
             userRepository.save(user);
 
-            Role role = roleRepository.findByAuthority("SELLER");
+            Role role = roleRepository.findByAuthority("ROLE_SELLER");
 
             if (role == null) {
+                log.error("SELLER role not found while registering user: {}", user.getEmail());
                 throw new ResourceNotFoundException("Role not found : " + role);
             }
 
@@ -129,6 +134,9 @@
             seller.setCompanyContact(requestDTO.getCompanyContact());
             sellerRepository.save(seller);
 
+            emailService.sendSellerRegistrationEmail(requestDTO.getEmail());
+
+            log.info("Seller registered successfully and awaiting admin approval: {}", user.getEmail());
             return ResponseDTO.builder()
                     .status(Constant.SUCCESS)
                     .message("Seller registered successfully. Awaiting admin approval.")
@@ -136,13 +144,13 @@
         }
 
         @Override
-
         public ResponseDTO activateAccount(String token) {
 
-            ActivationToken activationToken =
-                    activationTokenRepository.findByToken(token)
-                            .orElseThrow(() ->
-                                    new ResourceNotFoundException("Invalid activation token")
+            ActivationToken activationToken = activationTokenRepository.findByToken(token)
+                            .orElseThrow(() -> {
+                                log.warn("Invalid activation token received");
+                                return new ResourceNotFoundException("Invalid activation token");
+                            }
                             );
 
             if (activationToken.getExpiryTime().isBefore(LocalDateTime.now())) {
@@ -151,24 +159,17 @@
 
                 activationTokenRepository.delete(activationToken);
 
-                ActivationToken newToken =
-                        activationTokenService.createToken(user);
+                ActivationToken newToken = activationTokenService.createToken(user);
 
-                emailService.sendActivationEmail(
-                        user.getEmail(),
-                        newToken.getToken()
-                );
+                emailService.sendActivationEmail(user.getEmail(), newToken.getToken());
 
-                throw new InvalidOperationException(
-                        "Activation token expired. A new activation link has been sent to your email."
-                );
+                log.warn("Activation token expired. New token sent to {}", user.getEmail());
+
+                throw new InvalidOperationException("Activation token expired. A new activation link has been sent to your email.");
             }
 
-
             if (Boolean.TRUE.equals(activationToken.getUser().getIsActive())) {
-                throw new InvalidOperationException(
-                        "Account is already activated"
-                );
+                throw new InvalidOperationException("Account is already activated");
             }
 
             User user = activationToken.getUser();
@@ -177,6 +178,7 @@
 
             activationTokenRepository.delete(activationToken);
 
+            log.info("Account activated successfully for user: {}", user.getEmail());
             return ResponseDTO.builder()
                     .status(Constant.SUCCESS)
                     .message("Account activated successfully")
@@ -188,12 +190,11 @@
 
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() ->
-                            new ResourceNotFoundException(
-                                    "User not found with email: " + email
-                            )
+                            new ResourceNotFoundException("User not found with email: " + email)
                     );
 
             if (Boolean.TRUE.equals(user.getIsActive())) {
+                log.warn("Resend activation attempted for already active account");
                 throw new InvalidOperationException("Account is already activated");
             }
 
@@ -202,17 +203,16 @@
             ActivationToken activationToken= activationTokenService.createToken(user);
 
             if (activationToken == null || activationToken.getToken() == null) {
+                log.error("Activation token creation failed during resend");
                 throw new IllegalStateException("Activation token creation failed");
             }
             try {
-                emailService.sendActivationEmail(
-                        user.getEmail(),
-                        activationToken.getToken()
+                emailService.sendActivationEmail(user.getEmail(), activationToken.getToken()
                 );
             } catch (Exception ex) {
                 log.error("Failed to send activation email for user {}", user.getEmail(), ex);
             }
-
+            log.info("Activation email resent successfully");
             return ResponseDTO.builder()
                     .status(Constant.SUCCESS)
                     .message("Activation email resent successfully")

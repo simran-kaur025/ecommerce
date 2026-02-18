@@ -1,9 +1,13 @@
 package com.bootcamp.ecommerce.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "category_metadata_fields")
+@Getter
+@Setter
 public class CategoryMetadataField extends Auditable {
 
     @Id

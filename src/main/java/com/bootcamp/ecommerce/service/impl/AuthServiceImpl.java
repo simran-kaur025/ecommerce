@@ -3,7 +3,6 @@ package com.bootcamp.ecommerce.service.impl;
 import com.bootcamp.ecommerce.CustomUserDetails;
 import com.bootcamp.ecommerce.DTO.LoginRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginResponseDTO;
-import com.bootcamp.ecommerce.DTO.LogoutRequestDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.entity.ForgotPasswordToken;
@@ -16,6 +15,7 @@ import com.bootcamp.ecommerce.service.AuthService;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.JwtTokenService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +30,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
@@ -108,11 +109,9 @@ public class AuthServiceImpl implements AuthService {
         }
     }
     @Override
-    public ResponseDTO logout(LogoutRequestDTO requestDTO) {
+    public ResponseDTO logout(String refreshToken) {
 
-        RefreshToken token = refreshTokenRepository
-                .findByToken(requestDTO.getRefreshToken())
-                .orElse(null);
+        RefreshToken token = refreshTokenRepository.findByToken(refreshToken).orElse(null);
 
         if (token == null) {
             return ResponseDTO.builder()
@@ -123,6 +122,8 @@ public class AuthServiceImpl implements AuthService {
 
         if (token.getExpiryDate().before(new Date())) {
 
+            log.warn("Logout attempt with expired refresh token for userId={}", token.getUser().getId());
+
             refreshTokenRepository.delete(token);
 
             return ResponseDTO.builder()
@@ -132,6 +133,10 @@ public class AuthServiceImpl implements AuthService {
         }
         refreshTokenRepository.delete(token);
 
+
+        log.warn("Logout attempt with expired refresh token for userId={}", token.getUser().getId()
+        );
+
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
                 .message("Logged out successfully")
@@ -139,7 +144,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public ResponseDTO refreshAccessToken(String refreshToken) {
+    public ResponseDTO  refreshAccessToken(String refreshToken) {
 
         RefreshToken token = refreshTokenRepository
                 .findByToken(refreshToken)
@@ -208,8 +213,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public ResponseDTO resetPassword(String token, String password, String confirmPassword) {
 
-        ForgotPasswordToken resetToken =
-                forgotPasswordTokenRepository.findByToken(token)
+        ForgotPasswordToken resetToken = forgotPasswordTokenRepository.findByToken(token)
                         .orElseThrow(() ->
                                 new RuntimeException("Invalid token"));
 

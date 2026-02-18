@@ -20,7 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -115,7 +115,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    public ResponseDTO activateCustomer(UUID customerId) {
+    public ResponseDTO activateCustomer(Long customerId) {
 
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() ->
@@ -141,7 +141,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    public ResponseDTO deactivateCustomer(UUID customerId) {
+    public ResponseDTO deactivateCustomer(Long customerId) {
 
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() ->

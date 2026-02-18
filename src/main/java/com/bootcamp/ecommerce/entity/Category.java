@@ -1,9 +1,13 @@
 package com.bootcamp.ecommerce.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "categories")
+@Getter
+@Setter
 public class Category extends Auditable {
 
     @Id

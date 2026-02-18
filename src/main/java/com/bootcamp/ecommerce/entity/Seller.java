@@ -3,9 +3,7 @@ package com.bootcamp.ecommerce.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.UuidGenerator;
 
-import java.util.UUID;
 
 @Entity
 @Table(name = "sellers")
@@ -14,9 +12,9 @@ import java.util.UUID;
 public class Seller extends Auditable {
 
     @Id
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    private UUID id;
+    private Long id;
 
     @Column(unique = true, nullable = false)
     private String gst;

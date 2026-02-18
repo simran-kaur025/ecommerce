@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class LogoutRequestDTO {
-    @NotBlank(message = "Refresh token is required")
-    private String refreshToken;
+public class CategoryMetadataFieldRequest {
+    @NotBlank
+    private String name;
 }

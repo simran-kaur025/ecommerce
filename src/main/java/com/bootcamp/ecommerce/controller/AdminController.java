@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,7 +47,7 @@ public class AdminController {
 
     @PatchMapping("/{customerId}/activate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseDTO activateCustomer(@PathVariable UUID customerId) {
+    public ResponseDTO activateCustomer(@PathVariable Long customerId) {
 
         return adminUserService.activateCustomer(customerId);
 
@@ -57,7 +56,7 @@ public class AdminController {
 
     @PatchMapping("/{customerId}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseDTO deactivateCustomer(@PathVariable UUID customerId) {
+    public ResponseDTO deactivateCustomer(@PathVariable Long customerId) {
 
        return adminUserService.deactivateCustomer(customerId);
 

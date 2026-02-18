@@ -1,9 +1,13 @@
 package com.bootcamp.ecommerce.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name="order_products")
+@Getter
+@Setter
 public class OrderProduct extends Auditable{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,5 +25,6 @@ public class OrderProduct extends Auditable{
     private Integer quantity;
 
     private Double price;
+
 
 }

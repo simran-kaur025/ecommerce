@@ -39,7 +39,7 @@ public class ActivationTokenServiceImpl implements ActivationTokenService {
         token.setUser(user);
         token.setExpiryTime(LocalDateTime.now().plusHours(TOKEN_VALID_HOURS));
 
-        return activationTokenRepository.save(token);
+        return activationTokenRepository.saveAndFlush(token);
     }
 
     @Override

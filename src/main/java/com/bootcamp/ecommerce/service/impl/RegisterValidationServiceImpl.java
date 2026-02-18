@@ -27,8 +27,7 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
 
     @Override
 
-    public void validateCustomer(CustomerRequestDTO request,
-                                 List<UserValidationDTO> errors) {
+    public void validateCustomer(CustomerRequestDTO request, List<UserValidationDTO> errors) {
 
         // EMAIL
         if (request.getEmail() == null || request.getEmail().isBlank()) {
@@ -45,8 +44,7 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
         } else {
             userRepository.findByEmail(request.getEmail())
                     .ifPresent(user -> {
-                        if (userRoleRepository
-                                .existsByUserAndRoleAuthority(user, "CUSTOMER")) {
+                        if (userRoleRepository.existsByUserAndRoleAuthority(user, "ROLE_CUSTOMER")) {
                             errors.add(UserValidationDTO.builder()
                                     .key("Email")
                                     .errors(List.of("User is already registered as customer"))
@@ -124,7 +122,7 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
             userRepository.findByEmail(request.getEmail())
                     .ifPresent(user -> {
                         if (userRoleRepository
-                                .existsByUserAndRoleAuthority(user, "SELLER")) {
+                                .existsByUserAndRoleAuthority(user, "ROLE_SELLER")) {
                             errors.add(UserValidationDTO.builder()
                                     .key("Email")
                                     .errors(List.of("User is already registered as Seller"))
@@ -165,6 +163,34 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
             errors.add(UserValidationDTO.builder()
                     .key("gst")
                     .errors(List.of("GST already registered"))
+                    .build());
+        }
+
+        //Company
+        if (request.getCompanyName() == null || request.getCompanyName().isBlank()) {
+            errors.add(UserValidationDTO.builder()
+                    .key("Company Name")
+                    .errors(List.of("Company name is required"))
+                    .build());
+        } else if (sellerRepository.existsByCompanyName(request.getCompanyName())) {
+            errors.add(UserValidationDTO.builder()
+                    .key("Company Name")
+                    .errors(List.of("Company name is already registered"))
+                    .build());
+        }
+
+        // company contact
+
+        //Company
+        if (request.getCompanyContact() == null || request.getCompanyContact().isBlank()) {
+            errors.add(UserValidationDTO.builder()
+                    .key("Company contact")
+                    .errors(List.of("Company contact is required"))
+                    .build());
+        } else if (sellerRepository.existsByCompanyName(request.getCompanyName())) {
+            errors.add(UserValidationDTO.builder()
+                    .key("Company contact")
+                    .errors(List.of("Company contact is already registered"))
                     .build());
         }
     }

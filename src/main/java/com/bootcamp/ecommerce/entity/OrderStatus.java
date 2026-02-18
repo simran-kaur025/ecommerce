@@ -2,9 +2,15 @@ package com.bootcamp.ecommerce.entity;
 
 import com.bootcamp.ecommerce.enums.OrderState;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name="order_products")
+@Table(name="order_status")
+@Getter
+@Setter
 public class OrderStatus {
 
     @Id
@@ -20,4 +26,6 @@ public class OrderStatus {
 
     @Enumerated(EnumType.STRING)
     private OrderState toStatus;
+
+    private LocalDateTime updatedAt;
 }

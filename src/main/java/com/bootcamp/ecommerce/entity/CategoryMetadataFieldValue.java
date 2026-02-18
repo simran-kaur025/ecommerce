@@ -1,9 +1,13 @@
 package com.bootcamp.ecommerce.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "category_metadata_field_values")
+@Getter
+@Setter
 public class CategoryMetadataFieldValue extends Auditable {
 
     @Id
@@ -11,13 +15,13 @@ public class CategoryMetadataFieldValue extends Auditable {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_id")
+    @JoinColumn(name = "categoryId")
     private Category category;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "category_metadata_field_id")
-    private CategoryMetadataField metadataField;
+    @JoinColumn(name = "categoryMetadataFieldId")
+    private CategoryMetadataField categoryMetadataField;
 
     @Column(nullable = false)
-    private String values; // comma separated values
+    private String valueList;
 }
