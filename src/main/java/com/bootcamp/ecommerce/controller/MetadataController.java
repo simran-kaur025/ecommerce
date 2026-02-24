@@ -1,11 +1,16 @@
 package com.bootcamp.ecommerce.controller;
 
 import com.bootcamp.ecommerce.DTO.CategoryMetadataFieldRequest;
+import com.bootcamp.ecommerce.DTO.MetadataPageResponse;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.entity.CategoryMetadataField;
 import com.bootcamp.ecommerce.service.MetadataService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -22,7 +27,7 @@ public class MetadataController {
     private final MetadataService metadataService;
 
 
-//    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/add/metadata-fields")
     public ResponseEntity<ResponseDTO> createMetadataField(@Valid @RequestBody CategoryMetadataFieldRequest request) {
 
@@ -36,17 +41,22 @@ public class MetadataController {
                         .build());
     }
 
-
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/get/metadata-fields")
-    public ResponseEntity<ResponseDTO> getAllMetadataFields() {
+    public ResponseEntity<ResponseDTO> getAllMetadataFields(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int max,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String order,
+            @RequestParam(required = false) String query
+    ) {
 
-        List<CategoryMetadataField> allFields = metadataService.getAllMetadataFields();
+        MetadataPageResponse result  = metadataService.getAllMetadataFields(offset, max, sortBy, order, query);
 
         return ResponseEntity.ok(ResponseDTO.builder()
                 .status("SUCCESS")
-                .message("List of all metadata fields")
-                .data(allFields)
+                .message("List of metadata fields")
+                .data(result)
                 .build());
     }
 }

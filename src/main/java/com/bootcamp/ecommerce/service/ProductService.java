@@ -6,13 +6,13 @@ import org.springframework.data.domain.Page;
 public interface ProductService {
     void addProduct(ProductRequestDTO request);
     ProductResponse getProduct(Long productId);
-    Page<ProductResponse> getAllProducts(int offset, int max, String sortBy, String order, String query);
+    PageResponse<ProductResponse> getAllProducts(int offset, int max, String sortBy, String order, String query);
     void deleteProduct(Long productId);
     void updateProduct(Long productId, UpdateProductRequest request);
 
 
     ProductDetailResponseDTO viewProductAsCustomer(Long productId);
-    ProductListResponseDTO getAllProductsAsCustomer(
+    PageResponse<ProductDetailResponseDTO> getAllProductsAsCustomer(
             Long categoryId,
             int offset,
             int max,

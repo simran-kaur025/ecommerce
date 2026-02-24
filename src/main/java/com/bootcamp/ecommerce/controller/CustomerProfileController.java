@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ public class CustomerProfileController {
 
     private final CustomerProfileService customerProfileService;
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/profile")
     public ResponseEntity<ResponseDTO> viewMyProfile() {
 
@@ -35,6 +37,7 @@ public class CustomerProfileController {
         );
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/addresses")
     public ResponseEntity<ResponseDTO> viewMyAddresses() {
 
@@ -49,6 +52,7 @@ public class CustomerProfileController {
 
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PatchMapping("/update/profile")
     public ResponseEntity<ResponseDTO> updateProfile(@Valid @RequestBody UpdateProfileRequestDTO request) {
 
@@ -62,9 +66,9 @@ public class CustomerProfileController {
         );
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/add/address")
-    public ResponseEntity<ResponseDTO> addAddress(
-            @Valid @RequestBody AddressDTO request) {
+    public ResponseEntity<ResponseDTO> addAddress(@Valid @RequestBody AddressDTO request) {
 
         customerProfileService.addAddress(request);
 
@@ -78,6 +82,7 @@ public class CustomerProfileController {
                 );
     }
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @DeleteMapping("/delete/address/{addressId}")
     public ResponseEntity<ResponseDTO> deleteAddress(
             @PathVariable Long addressId) {
@@ -91,20 +96,6 @@ public class CustomerProfileController {
                         .build()
         );
     }
-
-    @PutMapping("/update/address/{addressId}")
-    public ResponseEntity<ResponseDTO> updateAddress(@PathVariable Long addressId, @Valid @RequestBody AddressDTO request) {
-
-        customerProfileService.updateAddress(addressId, request);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .data("Address updated successfully")
-                        .build()
-        );
-    }
-
 
 
 

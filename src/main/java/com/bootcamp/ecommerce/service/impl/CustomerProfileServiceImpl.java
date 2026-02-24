@@ -2,18 +2,12 @@ package com.bootcamp.ecommerce.service.impl;
 
 
 import com.bootcamp.ecommerce.CustomUserDetails;
-import com.bootcamp.ecommerce.DTO.AddressDTO;
-import com.bootcamp.ecommerce.DTO.CustomerProfileResponseDTO;
-import com.bootcamp.ecommerce.DTO.ResponseDTO;
-import com.bootcamp.ecommerce.DTO.UpdateProfileRequestDTO;
+import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.entity.Address;
 import com.bootcamp.ecommerce.entity.Customer;
 import com.bootcamp.ecommerce.entity.User;
-import com.bootcamp.ecommerce.exceptionalHandler.CustomerNotFoundException;
-import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
-import com.bootcamp.ecommerce.exceptionalHandler.UnauthorizedException;
-import com.bootcamp.ecommerce.exceptionalHandler.UserNotFoundException;
+import com.bootcamp.ecommerce.exceptionalHandler.*;
 import com.bootcamp.ecommerce.repository.AddressRepository;
 import com.bootcamp.ecommerce.repository.CustomerRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
@@ -115,9 +109,6 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                     return new UserNotFoundException("User not found");
                 });
 
-        if (request.getEmail() != null) {
-            user.setEmail(request.getEmail());
-        }
 
         if (request.getFirstName() != null) {
             user.setFirstName(request.getFirstName());
@@ -137,9 +128,26 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                     return new CustomerNotFoundException("Customer not found");
                 });
 
-        if (request.getPhone() != null) {
-            log.debug("Updating phone for user {} -> {}", email, request.getPhone());
-            customer.setContact(request.getPhone());
+        if (request.getPhoneNumber() != null) {
+
+            boolean exists = customerRepository.existsByContactAndIdNot(
+                    request.getPhoneNumber(),
+                    customer.getId()
+            );
+
+            if (exists) {
+                log.warn("Phone number already in use: {}", request.getPhoneNumber());
+                throw new ValidationException(
+                        List.of(
+                                UserValidationDTO.builder()
+                                        .key("phoneNumber")
+                                        .errors(List.of("Phone number already in use"))
+                                        .build()
+                        )
+                );
+            }
+
+            customer.setContact(request.getPhoneNumber());
         }
 
         userRepository.save(user);
@@ -151,14 +159,21 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
 
     public void addAddress(AddressDTO request) {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (addressRepository.existsByUserAndAddressLineIgnoreCaseAndCityIgnoreCaseAndStateIgnoreCaseAndCountryIgnoreCaseAndZipCodeIgnoreCase(
+                user,
+                request.getAddressLine(),
+                request.getCity(),
+                request.getState(),
+                request.getCountry(),
+                request.getZipCode())) {
+
+            throw new RuntimeException("Address already exists");
+        }
 
         Address address = new Address();
         address.setUser(user);
@@ -199,36 +214,6 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                 addressId, user.getId());
     }
 
-    public void updateAddress(Long addressId, AddressDTO request) {
 
-        log.info("Update address request received. addressId={}", addressId);
-
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    log.error("User not found for email={}", email);
-                    return new ResourceNotFoundException("User not found");
-                });
-
-        Address address = addressRepository
-                .findByIdAndUser(addressId, user)
-                .orElseThrow(() -> {
-                    log.error("Address not found. addressId={}, userId={}", addressId, user.getId());
-                    return new ResourceNotFoundException("Address not found");
-                });
-
-        address.setAddressLine(request.getAddressLine());
-        address.setCity(request.getCity());
-        address.setState(request.getState());
-        address.setCountry(request.getCountry());
-        address.setZipCode(request.getZipCode());
-        address.setLabel(request.getLabel());
-
-        addressRepository.save(address);
-
-        log.info("Address updated successfully. addressId={}, userId={}",
-                addressId, user.getId());
-    }
 }
 

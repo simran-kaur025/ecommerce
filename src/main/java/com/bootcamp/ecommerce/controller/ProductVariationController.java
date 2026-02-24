@@ -2,6 +2,7 @@ package com.bootcamp.ecommerce.controller;
 
 import com.bootcamp.ecommerce.DTO.ProductVariationRequestDTO;
 import com.bootcamp.ecommerce.DTO.ProductVariationResponse;
+import com.bootcamp.ecommerce.DTO.ProductVariationUpdateDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.service.ProductVariationService;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -20,20 +22,7 @@ public class ProductVariationController {
 
     private final ProductVariationService productVariationService;
 
-    @GetMapping("/get/product-variations/{variationId}")
-    public ResponseEntity<ResponseDTO> getProductVariation(@PathVariable Long variationId) {
-
-        ProductVariationResponse response = productVariationService.getProductVariation(variationId);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .data(response)
-                        .build()
-        );
-    }
-
-
+    @PreAuthorize("hasRole('SELLER')")
     @PostMapping("/add/product-variations/{productId}")
     public ResponseEntity<ResponseDTO> addVariation(@PathVariable Long productId, @Valid @RequestBody ProductVariationRequestDTO request) {
 
@@ -47,6 +36,21 @@ public class ProductVariationController {
                         .build());
     }
 
+    @PreAuthorize("hasRole('SELLER')")
+    @GetMapping("/get/product-variations/{variationId}")
+    public ResponseEntity<ResponseDTO> getProductVariation(@PathVariable Long variationId) {
+
+        ProductVariationResponse response = productVariationService.getProductVariation(variationId);
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .data(response)
+                        .build()
+        );
+    }
+
+    @PreAuthorize("hasRole('SELLER')")
     @GetMapping("/get/all/products-variations/{productId}")
     public ResponseEntity<ResponseDTO> getProductVariations(@PathVariable Long productId,
             @RequestParam(defaultValue = "0") int offset,
@@ -65,10 +69,11 @@ public class ProductVariationController {
         );
     }
 
-    @PutMapping("/variation/{id}")
-    public ResponseEntity<ResponseDTO> updateVariation(@PathVariable Long id, @RequestBody ProductVariationRequestDTO request) {
+    @PreAuthorize("hasRole('SELLER')")
+    @PutMapping("/update/variation")
+    public ResponseEntity<ResponseDTO> updateVariation(@Valid @RequestBody ProductVariationUpdateDTO request) {
 
-        productVariationService.updateProductVariation(id, request);
+        productVariationService.updateProductVariation(request);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()

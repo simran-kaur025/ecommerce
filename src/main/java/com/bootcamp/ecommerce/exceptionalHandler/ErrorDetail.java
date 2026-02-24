@@ -12,6 +12,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ErrorDetail {
+
+    private int status;
     private List<String> errors;
+
 }
+
 

@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/category")
@@ -18,7 +20,7 @@ public class CategoryController {
     private final CategoryService categoryService;
 
 
-//    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/add/category")
     public ResponseEntity<ResponseDTO> addCategory(@Valid @RequestBody CategoryRequestDTO request) {
 
@@ -62,8 +64,8 @@ public class CategoryController {
         );
     }
 
-//    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/add/metadata-fields")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/add/metadata-fields/values")
     public ResponseEntity<ResponseDTO> addMetadataToCategory( @Valid @RequestBody AddCategoryMetadataRequest request) {
 
         categoryService.addMetadataToCategory(request);
@@ -88,8 +90,9 @@ public class CategoryController {
                 .build());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/update/categories")
-    public ResponseEntity<ResponseDTO> updateCategory(@RequestBody BasicCategoryDTO request) {
+    public ResponseEntity<ResponseDTO> updateCategory( @Valid @RequestBody BasicCategoryDTO request) {
 
         categoryService.updateCategory(request);
 
@@ -100,6 +103,38 @@ public class CategoryController {
                         .build()
         );
     }
+
+
+    /* Seller Category Api */
+
+    @GetMapping("/get/all/categories/seller")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<ResponseDTO> getAllCategories(){
+
+        List<LeafCategoryResponse> response = categoryService.getAllCategoriesAsSeller();
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .data(response)
+                        .build()
+        );
+    }
+
+
+    /* Customer Category Api */
+    @GetMapping("get/all/categories/customer")
+    public ResponseDTO getCategoriesAsCustomer(@RequestParam(required = false) Long categoryId) {
+
+        List<CategoryResponse> data = categoryService.getCategoriesAsCustomer(categoryId);
+
+        return ResponseDTO.builder()
+                .status("SUCCESS")
+                .message("Categories fetched successfully")
+                .data(data)
+                .build();
+    }
+
 
 
 }

@@ -181,13 +181,12 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
 
         // company contact
 
-        //Company
         if (request.getCompanyContact() == null || request.getCompanyContact().isBlank()) {
             errors.add(UserValidationDTO.builder()
                     .key("Company contact")
                     .errors(List.of("Company contact is required"))
                     .build());
-        } else if (sellerRepository.existsByCompanyName(request.getCompanyName())) {
+        } else if (sellerRepository.existsByCompanyContact(request.getCompanyContact())) {
             errors.add(UserValidationDTO.builder()
                     .key("Company contact")
                     .errors(List.of("Company contact is already registered"))

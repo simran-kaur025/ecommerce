@@ -25,7 +25,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseDTO.builder()
-                        .status("FAIL")
+                        .status(Constant.FAIL)
                         .message(ex.getMessage())
                         .build());
     }
@@ -36,39 +36,33 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ResponseDTO.builder()
-                        .status("FAIL")
+                        .status(Constant.FAIL)
                         .message(ex.getMessage())
                         .build());
     }
 
 
     @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-                                                                  HttpHeaders headers,
-                                                                  HttpStatusCode status,
-                                                                  WebRequest request) {
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
 
         List<String> errors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
                 .map(err -> err.getDefaultMessage())
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
 
         ErrorDetail exceptionDetail = new ErrorDetail(
+                HttpStatus.BAD_REQUEST.value(),
                 errors
         );
+
         return new ResponseEntity<>(exceptionDetail, HttpStatus.BAD_REQUEST);
     }
-//    @ExceptionHandler(Exception.class)
-//    public ResponseEntity<ResponseDTO> handleInternalError(
-//            Exception ex) {
-//
-//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                .body(ResponseDTO.builder()
-//                        .status("FAIL")
-//                        .message("Internal server error")
-//                        .build());
-//    }
+
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ResponseDTO> handleValidationException(
@@ -88,7 +82,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseDTO.builder()
-                        .status("FAIL")
+                        .status(Constant.FAIL)
                         .message(ex.getMessage())
                         .build());
     }
@@ -116,7 +110,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ResponseDTO> handleUnauthorized(UnauthorizedException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ResponseDTO.builder()
-                        .status("FAIL")
+                        .status(Constant.FAIL)
                         .message(ex.getMessage())
                         .build());
     }
@@ -124,7 +118,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ResponseDTO> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseDTO.builder()
-                        .status("FAIL")
+                        .status(Constant.FAIL)
                         .message(ex.getMessage())
                         .build());
     }

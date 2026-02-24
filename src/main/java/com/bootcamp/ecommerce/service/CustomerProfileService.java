@@ -11,5 +11,4 @@ public interface CustomerProfileService {
     void updateProfile(UpdateProfileRequestDTO request);
     void addAddress(AddressDTO request);
     void deleteAddress(Long addressId);
-    void updateAddress(Long addressId, AddressDTO request);
 }

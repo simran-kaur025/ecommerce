@@ -3,6 +3,7 @@ package com.bootcamp.ecommerce.service.impl;
 import com.bootcamp.ecommerce.DTO.ProductSummary;
 import com.bootcamp.ecommerce.DTO.ProductVariationRequestDTO;
 import com.bootcamp.ecommerce.DTO.ProductVariationResponse;
+import com.bootcamp.ecommerce.DTO.ProductVariationUpdateDTO;
 import com.bootcamp.ecommerce.entity.CategoryMetadataFieldValue;
 import com.bootcamp.ecommerce.entity.Product;
 import com.bootcamp.ecommerce.entity.ProductVariation;
@@ -74,38 +75,49 @@ public class ProductVariationServiceImpl implements ProductVariationService {
 
         Map<String, Set<String>> allowedMap = allowedMeta.stream()
                 .collect(Collectors.toMap(
-                        m -> m.getCategoryMetadataField().getName(),
+                        m -> m.getCategoryMetadataField().getName().toLowerCase(),
                         m -> Arrays.stream(m.getValueList().split(","))
-                                .map(String::trim)
+                                .map(v -> v.trim().toLowerCase())
                                 .collect(Collectors.toSet())
                 ));
 
         for (Map.Entry<String, List<String>> entry : metadata.entrySet()) {
 
-            String field = entry.getKey();
+            String field = entry.getKey().trim().toLowerCase();
 
             if (!allowedMap.containsKey(field)) {
-                throw new IllegalArgumentException("Invalid metadata field: " + field);
+                throw new IllegalArgumentException("Invalid metadata field: " + entry.getKey());
             }
 
             Set<String> allowedValues = allowedMap.get(field);
 
             for (String value : entry.getValue()) {
-                if (!allowedValues.contains(value)) {
+
+                String normalizedValue = value.trim().toLowerCase();
+
+                if (!allowedValues.contains(normalizedValue)) {
                     throw new IllegalArgumentException(
-                            "Invalid value '" + value + "' for field " + field);
+                            "Invalid value '" + value + "' for field " + entry.getKey());
                 }
             }
         }
 
         List<ProductVariation> existingVariations = productVariationRepository.findByProduct(product);
-
         if (!existingVariations.isEmpty()) {
 
-            Set<String> expectedKeys =
-                    existingVariations.get(0).getMetadata().keySet();
+            Set<String> expectedKeys = existingVariations.get(0)
+                    .getMetadata()
+                    .keySet()
+                    .stream()
+                    .map(k -> k.trim().toLowerCase())
+                    .collect(Collectors.toSet());
 
-            if (!expectedKeys.equals(metadata.keySet())) {
+            Set<String> incomingKeys = metadata.keySet()
+                    .stream()
+                    .map(k -> k.trim().toLowerCase())
+                    .collect(Collectors.toSet());
+
+            if (!expectedKeys.equals(incomingKeys)) {
                 throw new IllegalArgumentException(
                         "All variations must have same metadata structure");
             }
@@ -205,29 +217,30 @@ public class ProductVariationServiceImpl implements ProductVariationService {
             variationPage = productVariationRepository.findByProduct_Id(productId, pageable);
         }
 
-        return variationPage.map(this::mapToVariationResponse);
+        return variationPage.map(this::mapToProductVariationResponse);
     }
-
-    private ProductVariationResponse mapToVariationResponse(
-            ProductVariation variation) {
-
-        return ProductVariationResponse.builder()
-                .id(variation.getId())
-                .price(variation.getPrice())
-                .quantityAvailable(variation.getQuantity_available())
-                .active(variation.getIsActive())
-                .metadata(variation.getMetadata())
-                .build();
-    }
+//
+//    private ProductVariationResponse mapToVariationResponse(
+//            ProductVariation variation) {
+//
+//        return ProductVariationResponse.builder()
+//                .id(variation.getId())
+//                .price(variation.getPrice())
+//                .quantityAvailable(variation.getQuantity_available())
+//                .active(variation.getIsActive())
+//                .metadata(variation.getMetadata())
+//                .product(variation.getProduct())
+//                .build();
+//    }
 
 
     @Transactional
     @Override
-    public void updateProductVariation(Long variationId, ProductVariationRequestDTO request) {
+    public void updateProductVariation(ProductVariationUpdateDTO request) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        ProductVariation variation = productVariationRepository.findById(variationId)
+        ProductVariation variation = productVariationRepository.findById(request.getVariationId())
                         .orElseThrow(() -> new ResourceNotFoundException("Variation not found"));
 
         Product product = variation.getProduct();
@@ -279,9 +292,7 @@ public class ProductVariationServiceImpl implements ProductVariationService {
 
 
 
-    private void validateMetadata(
-            Product product,
-            Map<String, List<String>> metadata) {
+    private void validateMetadata(Product product, Map<String, List<String>> metadata) {
 
         List<CategoryMetadataFieldValue> allowed =
                 categoryMetadataFieldValueRepository

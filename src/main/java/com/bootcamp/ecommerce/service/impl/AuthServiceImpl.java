@@ -1,6 +1,7 @@
 package com.bootcamp.ecommerce.service.impl;
 
 import com.bootcamp.ecommerce.CustomUserDetails;
+import com.bootcamp.ecommerce.DTO.ChangePasswordRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginResponseDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
@@ -20,8 +21,10 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.Map;
@@ -172,12 +175,12 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    @Transactional
     @Override
     public ResponseDTO forgotPassword(String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new RuntimeException("Email does not exist"));
+                .orElseThrow(() -> new RuntimeException("Email does not exist"));
 
         if (!user.getIsActive()) {
             return ResponseDTO.builder()
@@ -187,6 +190,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         forgotPasswordTokenRepository.deleteByUser(user);
+        forgotPasswordTokenRepository.flush();
+
 
         String token = UUID.randomUUID().toString();
 
@@ -200,8 +205,7 @@ public class AuthServiceImpl implements AuthService {
         forgotPasswordTokenRepository.save(resetToken);
 
         emailService.sendForgotPasswordEmail(
-                user.getEmail(), token
-        );
+                user.getEmail(), token);
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
@@ -210,12 +214,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
+    @Transactional
     @Override
     public ResponseDTO resetPassword(String token, String password, String confirmPassword) {
 
         ForgotPasswordToken resetToken = forgotPasswordTokenRepository.findByToken(token)
-                        .orElseThrow(() ->
-                                new RuntimeException("Invalid token"));
+                        .orElseThrow(() -> new RuntimeException("Invalid token"));
 
         if (resetToken.getExpiryDate().before(new Date())) {
             forgotPasswordTokenRepository.delete(resetToken);
@@ -242,6 +246,47 @@ public class AuthServiceImpl implements AuthService {
                 .status(Constant.SUCCESS)
                 .message("Password reset successfully")
                 .build();
+    }
+
+
+    @Transactional
+    @Override
+    public void changePassword(ChangePasswordRequestDTO request) {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("Old password is incorrect");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Password and confirm password do not match");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("New password must be different from old password");
+        }
+
+        if (!isStrongPassword(request.getNewPassword())) {
+            throw new RuntimeException(
+                    "Password must contain uppercase, lowercase, number, special character and be 8-15 characters long"
+            );
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        emailService.sendPasswordChangeEmail(user.getEmail());
+    }
+
+
+    private boolean isStrongPassword(String password) {
+        return password.matches(
+                "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,15}$"
+        );
     }
 
 

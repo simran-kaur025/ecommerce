@@ -11,4 +11,6 @@ public interface EmailService {
     void sendProductActivatedEmail(String toEmail,Product product);
 
     void sendProductDeactivatedEmail(String toEmail, Product product);
+    void sendPasswordChangeEmail(String email);
+    void sendProductApprovalEmail(String adminEmail, Product product, String sellerName);
 }

@@ -1,6 +1,5 @@
 package com.bootcamp.ecommerce.controller;
 
-import com.bootcamp.ecommerce.DTO.AdminUserSearchRequestDTO;
 import com.bootcamp.ecommerce.DTO.CustomerListResponseDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.DTO.SellerListResponseDTO;
@@ -18,11 +17,14 @@ public class AdminController {
 
     private final AdminUserService adminUserService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/customers")
-    public ResponseDTO getAllCustomers(AdminUserSearchRequestDTO request) {
+    public ResponseDTO getAllCustomers(@RequestParam(defaultValue = "10") int pageSize,
+                                       @RequestParam(defaultValue = "0") int offSet,
+                                       @RequestParam(defaultValue = "id") String customSort,
+                                       @RequestParam(required = false) String email) {
 
-        CustomerListResponseDTO data =
-                adminUserService.getAllCustomers(request);
+        CustomerListResponseDTO data = adminUserService.getAllCustomers(pageSize,offSet,customSort,email);
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
@@ -31,12 +33,14 @@ public class AdminController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/sellers")
-    public ResponseDTO getAllSellers(
-            @ModelAttribute AdminUserSearchRequestDTO request) {
+    public ResponseDTO getAllSellers(@RequestParam(defaultValue = "10") int pageSize,
+                                     @RequestParam(defaultValue = "0") int offSet,
+                                     @RequestParam(defaultValue = "id") String customSort,
+                                     @RequestParam(required = false) String email) {
 
-        SellerListResponseDTO data =
-                adminUserService.getAllSellers(request);
+        SellerListResponseDTO data = adminUserService.getAllSellers(pageSize,offSet,customSort,email);
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)

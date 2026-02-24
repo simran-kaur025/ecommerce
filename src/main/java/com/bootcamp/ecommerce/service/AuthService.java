@@ -1,5 +1,6 @@
 package com.bootcamp.ecommerce.service;
 
+import com.bootcamp.ecommerce.DTO.ChangePasswordRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginRequestDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 
@@ -9,5 +10,6 @@ public interface AuthService {
     ResponseDTO refreshAccessToken(String refreshToken);
     ResponseDTO forgotPassword(String email);
     ResponseDTO resetPassword(String token, String password, String confirmPassword);
+    void changePassword(ChangePasswordRequestDTO request);
 }
 

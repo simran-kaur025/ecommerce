@@ -29,8 +29,7 @@ public class ProductController {
     }
 
 
-
-
+    @PreAuthorize("hasRole('SELLER')")
     @GetMapping("/get/product/seller/{productId}")
     public ResponseEntity<ResponseDTO> getProduct(@PathVariable Long productId) {
 
@@ -54,7 +53,7 @@ public class ProductController {
             @RequestParam(defaultValue = "asc") String order,
             @RequestParam(required = false) String query) {
 
-        Page<ProductResponse> response = productService.getAllProducts(offset, max, sortBy, order, query);
+        PageResponse<ProductResponse> response = productService.getAllProducts(offset, max, sortBy, order, query);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -64,6 +63,7 @@ public class ProductController {
         );
     }
 
+    @PreAuthorize("hasRole('SELLER')")
     @DeleteMapping("/delete/products/seller/{productId}")
     public ResponseEntity<ResponseDTO> deleteProduct(@PathVariable Long productId) {
 
@@ -78,6 +78,7 @@ public class ProductController {
     }
 
 
+    @PreAuthorize("hasRole('SELLER')")
     @PutMapping("/update/products/seller/{productId}")
     public ResponseEntity<ResponseDTO> updateProduct(@PathVariable Long productId, @Valid @RequestBody UpdateProductRequest request) {
 
@@ -92,6 +93,7 @@ public class ProductController {
     }
 
 
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/get/products/customer/{id}")
     public ResponseEntity<ResponseDTO> viewProduct(@PathVariable Long id) {
 
@@ -108,7 +110,7 @@ public class ProductController {
 
 
 
-
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/get/all/products/customer")
     public ResponseEntity<ResponseDTO> getProducts(
             @RequestParam Long categoryId,
@@ -118,7 +120,7 @@ public class ProductController {
             @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String order
     ) {
-        ProductListResponseDTO response =  productService.getAllProductsAsCustomer(categoryId, offset, max, sort, order,query);
+        PageResponse<ProductDetailResponseDTO> response =  productService.getAllProductsAsCustomer(categoryId, offset, max, sort, order,query);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -129,7 +131,7 @@ public class ProductController {
         );
     }
 
-
+    @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/get/similar/products/customer")
     public ResponseEntity<ResponseDTO> viewSimilarProducts(
             @RequestParam Long productId,
@@ -190,7 +192,7 @@ public class ProductController {
     }
 
 
-    //    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/products/deactivate/{id}")
     public ResponseEntity<ResponseDTO> deactivateProduct(@PathVariable Long id) {
         productService.deactivateProduct(id);
@@ -205,7 +207,7 @@ public class ProductController {
     }
 
 
-//    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/products/activate/{id}")
     public ResponseEntity<ResponseDTO> activateProduct(@PathVariable Long id) {
 

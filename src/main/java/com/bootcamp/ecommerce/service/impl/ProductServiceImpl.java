@@ -8,7 +8,9 @@ import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.BadRequestException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +24,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import static com.bootcamp.ecommerce.constant.Constant.ADMIN_EMAIL;
+import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_APPROVAL_SUBJECT;
 
 @Service
 @RequiredArgsConstructor
@@ -37,15 +42,19 @@ public class ProductServiceImpl implements ProductService {
     private final EmailService emailService;
 
 
+    @CacheEvict(value = {"productList"}, allEntries = true)
     @Override
     public void addProduct(ProductRequestDTO request) {
         String email= SecurityContextHolder.getContext().getAuthentication().getName();
 
-        Seller seller = sellerRepository.findByUserEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Seller not Found"));
+        Seller seller = sellerRepository.findByUserEmail(email).orElseThrow(() -> new ResourceNotFoundException("Seller not Found"));
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not Found"));
+
+        if (categoryRepository.existsByParentCategoryId(category.getId())) {
+            throw new IllegalArgumentException("Product can only be added to leaf category");
+        }
 
         boolean exists = productRepository.existsByNameIgnoreCaseAndBrandIgnoreCaseAndCategoryAndSeller(request.getName(), request.getBrand(), category, seller);
 
@@ -65,18 +74,18 @@ public class ProductServiceImpl implements ProductService {
 
         productRepository.save(product);
 
-//        emailService.sendEmail(
-//                "admin@ecommerce.com",
-//                "New Product Added - Awaiting Approval",
-//                "Seller " + seller.getCompanyName() +
-//                        " added new product: " + product.getName()
-//        );
+        emailService.sendProductApprovalEmail(ADMIN_EMAIL, product, seller.getCompanyName());
 
         log.info("Product created successfully by seller {}", seller.getId());
 
 
     }
 
+
+    @Cacheable(
+            value = "products",
+            key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
+    )
     @Override
     @Transactional(readOnly = true)
     public ProductResponse getProduct(Long productId) {
@@ -138,9 +147,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
+    @Cacheable(
+            value = "productsList",
+            key = "#offset + '_' + #max + '_' + #sortBy + '_' + #order + '_' + #query + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
+    )
     @Transactional(readOnly = true)
     @Override
-    public Page<ProductResponse> getAllProducts(int offset, int max, String sortBy, String order, String query) {
+    public PageResponse<ProductResponse> getAllProducts(int offset, int max, String sortBy, String order, String query) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -156,10 +169,23 @@ public class ProductServiceImpl implements ProductService {
             productPage = productRepository.findBySeller_User_EmailAndIsDeletedFalse(email, pageable);
         }
 
-        return productPage.map(this::mapToProductResponse);
+        PageResponse<ProductResponse> pageResponse = new PageResponse<>();
+        pageResponse.setContent(productPage.map(this::mapToProductResponse).getContent());
+        pageResponse.setTotalElements(productPage.getTotalElements());
+        pageResponse.setTotalPages(productPage.getTotalPages());
+        pageResponse.setNumber(productPage.getNumber());
+        pageResponse.setSize(productPage.getSize());
+
+        return pageResponse;
     }
 
 
+    @Caching(evict = {
+            @CacheEvict(value = "products", key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"),
+            @CacheEvict(value = "productsList", allEntries = true),
+            @CacheEvict(value = "products", key = "#productId"),
+            @CacheEvict(value = "publicProductDetail", allEntries = true)
+    })
     @Transactional
     @Override
     public void deleteProduct(Long productId) {
@@ -182,6 +208,12 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(product);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "products", key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"),
+            @CacheEvict(value = "productsList", allEntries = true),
+            @CacheEvict(value = "products", key = "#productId"),
+            @CacheEvict(value = "publicProductDetail", allEntries = true)
+    })
     @Transactional
     @Override
     public void updateProduct(Long productId, UpdateProductRequest request) {
@@ -234,6 +266,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
+    @Cacheable(value = "publicProductDetail", key = "#productId")
     @Transactional(readOnly = true)
     @Override
     public ProductDetailResponseDTO viewProductAsCustomer(Long productId) {
@@ -254,9 +287,13 @@ public class ProductServiceImpl implements ProductService {
         return mapToProductDetailResponse(product, variations);
     }
 
+    @Cacheable(
+            value = "publicProductList",
+            key = "#categoryId + '_' + #offset + '_' + #max + '_' + #sort + '_' + #order + '_' + #query"
+    )
     @Transactional(readOnly = true)
     @Override
-    public ProductListResponseDTO getAllProductsAsCustomer(
+    public PageResponse<ProductDetailResponseDTO> getAllProductsAsCustomer(
             Long categoryId,
             int offset,
             int max,
@@ -288,13 +325,13 @@ public class ProductServiceImpl implements ProductService {
                         })
                         .toList();
 
-        return ProductListResponseDTO.builder()
-                .products(products)
-                .page(page.getNumber())
-                .size(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .build();
+        return new PageResponse<ProductDetailResponseDTO>(
+                products,
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber(),
+                page.getSize()
+        );
     }
 
 

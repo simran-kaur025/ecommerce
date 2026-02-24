@@ -39,6 +39,7 @@
         private final SellerRepository sellerRepository;
         private final ActivationTokenRepository activationTokenRepository;
         private final  PasswordEncoder passwordEncoder;
+        private final AddressRepository addressRepository;
 
        private final ActivationTokenService activationTokenService;
        private final EmailService emailService;
@@ -58,11 +59,9 @@
 
             User user = createUser(requestDTO);
 
-            Role role = roleRepository.findByAuthority("ROLE_CUSTOMER");
+            Role role = roleRepository.findByAuthority("ROLE_CUSTOMER")
+                    .orElseThrow(() -> new RuntimeException("ROLE_CUSTOMER not found"));
 
-            if (role == null) {
-                throw new ResourceNotFoundException("Role not found: " + role);
-            }
 
             UserRole userRole = new UserRole();
             userRole.setUser(user);
@@ -109,18 +108,16 @@
             user.setEmail(requestDTO.getEmail());
             user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
             user.setFirstName(requestDTO.getFirstName());
+            user.setMiddleName(requestDTO.getMiddleName());
             user.setLastName(requestDTO.getLastName());
             user.setIsActive(false);
             user.setIsDeleted(false);
 
             userRepository.save(user);
 
-            Role role = roleRepository.findByAuthority("ROLE_SELLER");
+            Role role = roleRepository.findByAuthority("ROLE_SELLER")
+                    .orElseThrow(() -> new RuntimeException("ROLE_SELLER not found"));
 
-            if (role == null) {
-                log.error("SELLER role not found while registering user: {}", user.getEmail());
-                throw new ResourceNotFoundException("Role not found : " + role);
-            }
 
             UserRole userRole = new UserRole();
             userRole.setUser(user);
@@ -133,6 +130,21 @@
             seller.setCompanyName(requestDTO.getCompanyName());
             seller.setCompanyContact(requestDTO.getCompanyContact());
             sellerRepository.save(seller);
+
+            if (requestDTO.getAddress() != null) {
+
+                Address address = new Address();
+                address.setAddressLine(requestDTO.getAddress().getAddressLine());
+                address.setCity(requestDTO.getAddress().getCity());
+                address.setState(requestDTO.getAddress().getState());
+                address.setCountry(requestDTO.getAddress().getCountry());
+                address.setZipCode(requestDTO.getAddress().getZipCode());
+                address.setUser(user);
+
+                addressRepository.save(address);
+            }
+
+
 
             emailService.sendSellerRegistrationEmail(requestDTO.getEmail());
 
@@ -227,6 +239,7 @@
             user.setEmail(requestDTO.getEmail());
             user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
             user.setFirstName(requestDTO.getFirstName());
+            user.setMiddleName(requestDTO.getMiddleName());
             user.setLastName(requestDTO.getLastName());
             user.setIsActive(false);
             user.setIsDeleted(false);

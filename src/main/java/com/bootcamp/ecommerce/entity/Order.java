@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "orders")
 @Getter
@@ -44,5 +47,9 @@ public class Order extends Auditable {
 
     @Column(name = "customer_address_label")
     private String customerAddressLabel;
+
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderProduct> orderProducts = new ArrayList<>();
 }
 

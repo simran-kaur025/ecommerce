@@ -27,5 +27,6 @@ public class OrderStatus {
     @Enumerated(EnumType.STRING)
     private OrderState toStatus;
 
-    private LocalDateTime updatedAt;
+
+    private LocalDateTime transitionDate;
 }

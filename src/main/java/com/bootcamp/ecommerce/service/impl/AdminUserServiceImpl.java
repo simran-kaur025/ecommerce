@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -30,22 +31,22 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final SellerRepository sellerRepository;
     private final UserRepository userRepository;
 
-    EmailService emailService;
     @Override
-    public CustomerListResponseDTO getAllCustomers(AdminUserSearchRequestDTO request) {
+    public CustomerListResponseDTO getAllCustomers(int pageSize,int offSet, String customSort,String email) {
 
-        Pageable pageable = PageRequest.of(
-                request.getPageOffset(),
-                request.getPageSize(),
-                Sort.by(request.getSort()).ascending()
+        Map<String,String> sortMap = Map.of(
+                "email", "user.email",
+                "name", "user.firstName",
+                "company", "companyName"
         );
+
+        String sortField = sortMap.getOrDefault(customSort, "id");
+        Pageable pageable = PageRequest.of(offSet, pageSize, Sort.by(sortField).ascending());
 
         Page<Customer> userPage;
 
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            userPage = customerRepository
-                    .findByUserEmailContainingIgnoreCase(
-                            request.getEmail(), pageable);
+        if (email != null && !email.isBlank()) {
+            userPage = customerRepository.findByUserEmailContainingIgnoreCase(email, pageable);
         } else {
             userPage = customerRepository.findAll(pageable);
         }
@@ -72,20 +73,22 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    public SellerListResponseDTO getAllSellers(AdminUserSearchRequestDTO request) {
+    public SellerListResponseDTO getAllSellers(int pageSize,int offSet, String customSort,String email) {
 
-        Pageable pageable = PageRequest.of(
-                request.getPageOffset(),
-                request.getPageSize(),
-                Sort.by(request.getSort()).ascending()
+        Map<String,String> sortMap = Map.of(
+                "email", "user.email",
+                "name", "user.firstName",
+                "company", "companyName"
         );
+
+        String sortField = sortMap.getOrDefault(customSort, "id");
+        Pageable pageable = PageRequest.of(offSet, pageSize, Sort.by(sortField).ascending());
 
         Page<Seller> sellerPage;
 
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+        if (email != null && !email.isBlank()) {
             sellerPage = sellerRepository
-                    .findByUserEmailContainingIgnoreCase(
-                            request.getEmail(), pageable);
+                    .findByUserEmailContainingIgnoreCase(email, pageable);
         } else {
             sellerPage = sellerRepository.findAll(pageable);
         }
@@ -144,8 +147,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public ResponseDTO deactivateCustomer(Long customerId) {
 
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Customer not found with id: " + customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + customerId)
                 );
 
         User user = customer.getUser();

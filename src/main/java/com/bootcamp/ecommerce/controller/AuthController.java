@@ -1,6 +1,7 @@
 package com.bootcamp.ecommerce.controller;
 
 import com.bootcamp.ecommerce.DTO.*;
+import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -9,7 +10,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import static org.springframework.http.HttpStatus.OK;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -52,7 +56,7 @@ public class AuthController {
         ResponseDTO response = authService.refreshAccessToken(refreshToken);
         log.info("Access token refreshed successfully");
             return ResponseEntity
-                    .status(HttpStatus.OK)
+                    .status(OK)
                     .body(response);
 
 
@@ -66,24 +70,43 @@ public class AuthController {
 
         ResponseDTO response = authService.forgotPassword(requestDTO.getEmail());
         return ResponseEntity
-                .status(HttpStatus.OK)
+                .status(OK)
                 .body(response);
     }
 
     @PutMapping("/reset-password")
-    public ResponseEntity<ResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO requestDTO) {
+    public ResponseEntity<ResponseDTO> resetPassword(@RequestParam String token,@Valid @RequestBody ResetPasswordRequestDTO requestDTO) {
 
         log.info("Reset password request received");
 
         ResponseDTO response = authService.resetPassword(
-                requestDTO.getToken(),
+                token,
                 requestDTO.getPassword(),
                 requestDTO.getConfirmPassword()
         );
 
         log.info("Password reset successfully");
+
         return ResponseEntity
-                .status(HttpStatus.OK)
+                .status(OK)
                 .body(response);
     }
+
+
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/change-password")
+    public ResponseEntity<ResponseDTO> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
+
+        authService.changePassword(request);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .message("Password updated successfully")
+                        .build());
+    }
+
+
+
 }

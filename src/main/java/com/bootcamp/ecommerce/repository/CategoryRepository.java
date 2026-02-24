@@ -29,8 +29,20 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     );
 
     List<Category> findByParentCategoryId(Long categoryId);
+    boolean existsByNameIgnoreCaseAndParentCategory(String name, Category parent);
 
 
+    @Query("""
+       SELECT c FROM Category c
+       WHERE NOT EXISTS (
+           SELECT 1 FROM Category child
+           WHERE child.parentCategory = c
+       )
+       """)
+    List<Category> findLeafCategories();
+
+    List<Category> findByParentCategoryIsNull();
+    boolean existsByParentCategoryId(Long parentId);
 
 }
 

@@ -12,6 +12,6 @@ public class LeafCategoryResponse {
     private Long id;
     private String name;
     private List<String> parentChain;
-    private List<CategoryMetadataFieldValueRequest> metadata;
+    private List<MetadataDTO> metadata;
 }
 

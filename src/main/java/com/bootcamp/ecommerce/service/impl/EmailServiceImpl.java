@@ -13,6 +13,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_APPROVAL_SUBJECT;
+import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_DEACTIVATED_SUBJECT;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -78,7 +81,7 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-
+    @Async
     @Override
     public void sendProductActivatedEmail(String toEmail, Product product) {
 
@@ -99,6 +102,7 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(toEmail, Constant.PRODUCT_ACTIVATED_SUBJECT, body);
     }
 
+    @Async
     @Override
     public void sendProductDeactivatedEmail(String toEmail, Product product) {
 
@@ -116,9 +120,41 @@ public class EmailServiceImpl implements EmailService {
                 product.getDescription()
         );
 
-        sendEmail(toEmail, Constant.PRODUCT_DEACTIVATED_SUBJECT, body);
+        sendEmail(toEmail, PRODUCT_DEACTIVATED_SUBJECT, body);
     }
 
+    @Async
+    @Override
+    public void sendPasswordChangeEmail(String email) {
+
+        sendEmail(email, Constant.PASSWORD_CHANGED_SUBJECT, Constant.PASSWORD_CHANGED_BODY);
+    }
+
+
+    @Async
+    @Override
+    public void sendProductApprovalEmail(String adminEmail, Product product, String sellerName) {
+
+        String body = String.format("""
+        New Product Added - Awaiting Approval
+
+        Seller: %s
+
+        Product Details:
+        Name: %s
+        Brand: %s
+        Description: %s
+
+        Please review and approve the product.
+        """,
+                sellerName,
+                product.getName(),
+                product.getBrand(),
+                product.getDescription()
+        );
+
+        sendEmail(adminEmail, PRODUCT_APPROVAL_SUBJECT, body);
+    }
 
 
     @Async

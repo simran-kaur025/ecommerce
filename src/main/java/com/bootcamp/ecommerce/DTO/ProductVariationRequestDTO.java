@@ -4,9 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 import java.util.Map;
@@ -14,6 +12,8 @@ import java.util.Map;
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProductVariationRequestDTO {
 //
 //    @NotNull(message = "Product Id is mandatory")
@@ -32,7 +32,7 @@ public class ProductVariationRequestDTO {
 
     private List<String> secondaryImages;
 
-    @NotEmpty
+    @NotEmpty(message = "metadata is required")
     private Map<String, List<String>> metadata;
 
    private Boolean isActive;
