@@ -6,9 +6,12 @@ import com.bootcamp.ecommerce.DTO.LoginRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginResponseDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.constant.Constant;
+import com.bootcamp.ecommerce.entity.AccessToken;
 import com.bootcamp.ecommerce.entity.ForgotPasswordToken;
 import com.bootcamp.ecommerce.entity.RefreshToken;
 import com.bootcamp.ecommerce.entity.User;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
+import com.bootcamp.ecommerce.repository.AccessTokenRepository;
 import com.bootcamp.ecommerce.repository.ForgotPasswordTokenRepository;
 import com.bootcamp.ecommerce.repository.RefreshTokenRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
@@ -17,6 +20,7 @@ import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.JwtTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,7 +30,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,11 +45,13 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenService jwtTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AccessTokenRepository accessTokenRepository;
     private final UserRepository userRepository;
     private final ForgotPasswordTokenRepository forgotPasswordTokenRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final MessageSource messageSource;
 
     @Override
     public ResponseDTO login(LoginRequestDTO requestDTO) {
@@ -111,34 +119,52 @@ public class AuthServiceImpl implements AuthService {
                     .build();
         }
     }
+
     @Override
-    public ResponseDTO logout(String refreshToken) {
+    @Transactional
+    public ResponseDTO logout(String accessTokenValue) {
 
-        RefreshToken token = refreshTokenRepository.findByToken(refreshToken).orElse(null);
+        AccessToken accessToken = accessTokenRepository
+                .findByToken(accessTokenValue).orElseThrow(() -> new RuntimeException("Invalid access token"));
 
-        if (token == null) {
+        if (!Integer.valueOf(1).equals(accessToken.getStatus())) {
             return ResponseDTO.builder()
                     .status(Constant.FAIL)
-                    .message("Invalid refresh token")
+                    .message("Token already revoked or inactive")
                     .build();
         }
 
-        if (token.getExpiryDate().before(new Date())) {
+        if (accessToken == null) {
+            return ResponseDTO.builder()
+                    .status(Constant.FAIL)
+                    .message("Invalid access token")
+                    .build();
+        }
 
-            log.warn("Logout attempt with expired refresh token for userId={}", token.getUser().getId());
+        if (accessToken.getExpiryDate().before(new Date())) {
 
-            refreshTokenRepository.delete(token);
+            log.warn("Logout attempt with expired access token for userId={}",
+                    accessToken.getUser().getId());
 
             return ResponseDTO.builder()
                     .status(Constant.FAIL)
-                    .message("Refresh token already expired")
+                    .message("Access token already expired")
                     .build();
         }
-        refreshTokenRepository.delete(token);
 
+        User user = accessToken.getUser();
 
-        log.warn("Logout attempt with expired refresh token for userId={}", token.getUser().getId()
-        );
+        RefreshToken refreshToken = refreshTokenRepository
+                .findByUserAndStatus(user,1)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+
+        accessToken.setStatus(2);
+        refreshToken.setStatus(2);
+
+        accessTokenRepository.save(accessToken);
+        refreshTokenRepository.save(refreshToken);
+
+        log.info("User logged out successfully for userId={}", user.getId());
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
@@ -146,17 +172,15 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+
     @Override
     public ResponseDTO  refreshAccessToken(String refreshToken) {
 
-        RefreshToken token = refreshTokenRepository
-                .findByToken(refreshToken)
+        RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
                 .orElseThrow(() ->
                         new RuntimeException("Invalid refresh token"));
 
         if (token.getExpiryDate().before(new Date())) {
-
-            refreshTokenRepository.delete(token);
 
             return ResponseDTO.builder()
                     .status(Constant.FAIL)
@@ -165,7 +189,15 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = token.getUser();
-        String newAccessToken = jwtTokenService.generateAccessToken(user);
+        String newAccessTokenValue = jwtTokenService.generateAccessToken(user);
+
+        AccessToken newAccessToken = new AccessToken();
+        newAccessToken.setToken(newAccessTokenValue);
+        newAccessToken.setUser(user);
+        newAccessToken.setStatus(1);
+        newAccessToken.setExpiryDate(jwtTokenService.getAccessTokenExpiryDate());
+
+        accessTokenRepository.save(newAccessToken);
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
@@ -235,10 +267,16 @@ public class AuthServiceImpl implements AuthService {
                     .message("Passwords do not match")
                     .build();
         }
+        if (!isStrongPassword(password)) {
+            throw new BadRequestException(
+                    "Password must contain uppercase, lowercase, number, special character and be 8-15 characters long"
+            );
+        }
 
         User user = resetToken.getUser();
 
         user.setPassword(passwordEncoder.encode(password));
+        user.setPasswordUpdateDate(LocalDateTime.now());
         userRepository.save(user);
 
         forgotPasswordTokenRepository.delete(resetToken);
@@ -251,7 +289,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public void changePassword(ChangePasswordRequestDTO request) {
+    public void changePassword(ChangePasswordRequestDTO request, Locale locale) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -259,24 +297,26 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new RuntimeException("Old password is incorrect");
+            throw new BadRequestException("Old password is incorrect");
         }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new RuntimeException("Password and confirm password do not match");
+            String msg = messageSource.getMessage("error.password.mismatch", null, locale);
+            throw new BadRequestException(msg);
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
-            throw new RuntimeException("New password must be different from old password");
+            throw new BadRequestException("New password must be different from old password");
         }
 
         if (!isStrongPassword(request.getNewPassword())) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Password must contain uppercase, lowercase, number, special character and be 8-15 characters long"
             );
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordUpdateDate(LocalDateTime.now());
         userRepository.save(user);
 
         emailService.sendPasswordChangeEmail(user.getEmail());

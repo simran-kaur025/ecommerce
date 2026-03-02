@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @EnableJpaAuditing(auditorAwareRef = "auditProvider")
 @EnableMethodSecurity
 @EnableCaching
+@EnableScheduling
 public class EcommerceApplication {
 
 	public static void main(String[] args) {

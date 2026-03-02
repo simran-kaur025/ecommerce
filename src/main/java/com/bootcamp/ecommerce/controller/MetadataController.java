@@ -2,9 +2,11 @@ package com.bootcamp.ecommerce.controller;
 
 import com.bootcamp.ecommerce.DTO.CategoryMetadataFieldRequest;
 import com.bootcamp.ecommerce.DTO.MetadataPageResponse;
+import com.bootcamp.ecommerce.DTO.RequestParams;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.entity.CategoryMetadataField;
 import com.bootcamp.ecommerce.service.MetadataService;
+import com.bootcamp.ecommerce.utils.RequestParamsExtractor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/metadata")
@@ -25,6 +28,8 @@ import java.util.List;
 public class MetadataController {
 
     private final MetadataService metadataService;
+
+    private final RequestParamsExtractor extractor;
 
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -43,15 +48,11 @@ public class MetadataController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/get/metadata-fields")
-    public ResponseEntity<ResponseDTO> getAllMetadataFields(
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(required = false) String query
-    ) {
+    public ResponseEntity<ResponseDTO> getAllMetadataFields(@RequestParam Map<String, String> allParams) {
 
-        MetadataPageResponse result  = metadataService.getAllMetadataFields(offset, max, sortBy, order, query);
+        RequestParams requestParams = extractor.extract(allParams);
+
+        MetadataPageResponse result  = metadataService.getAllMetadataFields(requestParams);
 
         return ResponseEntity.ok(ResponseDTO.builder()
                 .status("SUCCESS")

@@ -3,8 +3,10 @@ package com.bootcamp.ecommerce.service;
 import com.bootcamp.ecommerce.DTO.*;
 import org.springframework.data.domain.Page;
 
+import java.util.Locale;
+
 public interface OrderService {
-    OrderResponse placeOrderForCurrentUser(PlaceOrderRequest request);
+    OrderResponse placeOrderForCurrentUser(PlaceOrderRequest request, Locale locale);
     OrderResponse placePartialOrder(PartialOrderRequest request);
     OrderResponse directOrder(OrderRequest request);
     void cancelOrder(Long orderProductId);
@@ -17,6 +19,8 @@ public interface OrderService {
     Page<OrderResponseDTO> getAllOrdersAsAdmin(int max, int offset,
                                                String sort, String order,
                                                String query);
+
+    void notifyPendingOrders();
 
 
 }

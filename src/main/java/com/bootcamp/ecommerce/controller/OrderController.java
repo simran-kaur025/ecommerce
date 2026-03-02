@@ -4,10 +4,13 @@ import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cglib.core.Local;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Locale;
 
 @RequestMapping("/api/order")
 @RestController
@@ -17,8 +20,8 @@ public class OrderController {
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/place/order")
-    public ResponseEntity<OrderResponse> placeOrder(@Valid @RequestBody PlaceOrderRequest placeOrderRequest) {
-        OrderResponse response = orderService.placeOrderForCurrentUser(placeOrderRequest);
+    public ResponseEntity<OrderResponse> placeOrder(@Valid @RequestBody PlaceOrderRequest placeOrderRequest, Locale locale) {
+        OrderResponse response = orderService.placeOrderForCurrentUser(placeOrderRequest, locale);
         return ResponseEntity.ok(response);
     }
 

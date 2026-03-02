@@ -1,15 +1,18 @@
 package com.bootcamp.ecommerce.repository;
 
 import com.bootcamp.ecommerce.entity.Category;
+import com.bootcamp.ecommerce.entity.CategoryMetadataField;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface CategoryRepository extends JpaRepository<Category, Long> {
+public interface CategoryRepository extends JpaRepository<Category, Long>, JpaSpecificationExecutor<Category> {
     boolean existsByNameIgnoreCaseAndParentCategoryIsNull(String name);
 
     boolean existsByNameIgnoreCaseAndParentCategoryId(String name, Long parentId);
@@ -17,7 +20,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findById(Long id);
     List<Category> findByParentCategory(Category category);
     Page<Category> findByNameContainingIgnoreCase(String name, Pageable pageable);
-    Page<Category> findAll(Pageable pageable);
+    Page<Category> findAll(Specification specification,Pageable pageable);
 
     boolean existsByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCaseAndParentCategoryIsNullAndIdNot(String name, Long id);

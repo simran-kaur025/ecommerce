@@ -31,6 +31,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final SellerRepository sellerRepository;
     private final UserRepository userRepository;
 
+    private final EmailService emailService;
+
     @Override
     public CustomerListResponseDTO getAllCustomers(int pageSize,int offSet, String customSort,String email) {
 
@@ -118,49 +120,49 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    public ResponseDTO activateCustomer(Long customerId) {
+    public ResponseDTO activateUser(Long userId) {
 
-        Customer customer = customerRepository.findById(customerId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Customer not found with id: " + customerId)
+                        new ResourceNotFoundException("User not found with id: " + userId)
                 );
 
-        User user = customer.getUser();
 
         if (Boolean.TRUE.equals(user.getIsActive())) {
-            throw new InvalidOperationException("Customer account is already activated");
+            throw new InvalidOperationException("User account is already activated");
         }
 
         user.setIsActive(true);
         userRepository.save(user);
 
-        //emailService.sendAccountActivatedEmail(user.getEmail());
+        emailService.sendAccountActivatedEmail(user.getEmail());
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
-                .message("Customer account activated successfully")
+                .message("User account activated successfully")
                 .build();
 
     }
 
     @Override
-    public ResponseDTO deactivateCustomer(Long customerId) {
+    public ResponseDTO deactivateUser(Long userId) {
 
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + customerId)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId)
                 );
 
-        User user = customer.getUser();
+
 
         if (!Boolean.TRUE.equals(user.getIsActive())) {
-            throw new InvalidOperationException("Customer account is already deactivated");
+            throw new InvalidOperationException("User account is already deactivated");
         }
 
         user.setIsActive(false);
         userRepository.save(user);
+        emailService.sendAccountDeactivatedEmail(user.getEmail());
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
-                .message("Customer account deactivated successfully")
+                .message("User account deactivated successfully")
                 .build();
     }
 }

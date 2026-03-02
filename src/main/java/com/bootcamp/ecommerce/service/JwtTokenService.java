@@ -8,6 +8,7 @@ import java.util.Date;
 public interface JwtTokenService {
     public String generateAccessToken(User user);
     public String generateRefreshToken(User user);
+    public Date getAccessTokenExpiryDate();
     public Date getRefreshTokenExpiryDate();
 
     String extractUsername(String token);

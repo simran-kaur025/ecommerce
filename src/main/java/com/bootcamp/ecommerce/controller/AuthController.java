@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Locale;
+
 import static org.springframework.http.HttpStatus.OK;
 
 @RestController
@@ -95,9 +97,9 @@ public class AuthController {
 
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/change-password")
-    public ResponseEntity<ResponseDTO> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
+    public ResponseEntity<ResponseDTO> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request, Locale locale) {
 
-        authService.changePassword(request);
+        authService.changePassword(request,locale);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

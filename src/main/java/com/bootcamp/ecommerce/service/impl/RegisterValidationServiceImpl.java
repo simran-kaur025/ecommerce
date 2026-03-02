@@ -10,10 +10,12 @@ import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.repository.UserRoleRepository;
 import com.bootcamp.ecommerce.service.RegisterValidationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 
 @Service
@@ -24,10 +26,11 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
     private final CustomerRepository customerRepository;
     private final SellerRepository sellerRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MessageSource messageSource;
 
     @Override
 
-    public void validateCustomer(CustomerRequestDTO request, List<UserValidationDTO> errors) {
+    public void validateCustomer(CustomerRequestDTO request, List<UserValidationDTO> errors, Locale locale) {
 
         // EMAIL
         if (request.getEmail() == null || request.getEmail().isBlank()) {
@@ -93,19 +96,18 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
         if (request.getConfirmPassword() == null ||
                 !request.getPassword().equals(request.getConfirmPassword())) {
 
+            String msg = messageSource.getMessage("success.register", null, locale);
             errors.add(UserValidationDTO.builder()
                     .key("Confirm Password")
-                    .errors(List.of("Password and confirm password do not match"))
+                    .errors(List.of(msg))
                     .build());
         }
     }
 
 
     @Override
-    public void validateSeller(SellerRequestDTO request,
-                               List<UserValidationDTO> errors) {
+    public void validateSeller(SellerRequestDTO request, List<UserValidationDTO> errors, Locale locale ) {
 
-        // EMAIL
         if (request.getEmail() == null || request.getEmail().isBlank()) {
             errors.add(UserValidationDTO.builder()
                     .key("Email")
@@ -152,9 +154,10 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
         if (request.getConfirmPassword() == null ||
                 !request.getPassword().equals(request.getConfirmPassword())) {
 
+            String msg = messageSource.getMessage("error.password.mismatch",null,locale);
             errors.add(UserValidationDTO.builder()
                     .key("Confirm Password")
-                    .errors(List.of("Password and confirm password do not match"))
+                    .errors(List.of(msg))
                     .build());
         }
 

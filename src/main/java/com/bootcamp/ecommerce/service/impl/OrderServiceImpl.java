@@ -5,9 +5,11 @@ import com.bootcamp.ecommerce.entity.*;
 import com.bootcamp.ecommerce.enums.OrderState;
 import com.bootcamp.ecommerce.enums.PaymentMethod;
 import com.bootcamp.ecommerce.repository.*;
+import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.weaver.ast.Or;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,13 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.bootcamp.ecommerce.enums.OrderState.ORDER_PLACED;
 import static com.bootcamp.ecommerce.enums.OrderState.RETURN_REQUESTED;
 import static com.bootcamp.ecommerce.enums.PaymentMethod.COD;
 
@@ -39,11 +39,13 @@ public class OrderServiceImpl implements OrderService {
     private final OrderStatusRepository orderStatusRepository;
     private final ProductVariationRepository productVariationRepository;
     private final AddressRepository addressRepository;
+    private final EmailService emailService;
+    private final MessageSource messageSource;
 
 
     @Transactional
     @Override
-    public OrderResponse placeOrderForCurrentUser(PlaceOrderRequest request) {
+    public OrderResponse placeOrderForCurrentUser(PlaceOrderRequest request, Locale locale) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -94,8 +96,7 @@ public class OrderServiceImpl implements OrderService {
 
             ProductVariation variation = cart.getProductVariation();
 
-            variation.setQuantity_available(
-                    variation.getQuantity_available() - cart.getQuantity());
+            variation.setQuantity_available(variation.getQuantity_available() - cart.getQuantity());
 
             productVariationRepository.save(variation);
 
@@ -104,6 +105,7 @@ public class OrderServiceImpl implements OrderService {
             item.setProductVariation(variation);
             item.setQuantity(cart.getQuantity());
             item.setPrice(variation.getPrice() * cart.getQuantity());
+            item.setCurrentStatus(ORDER_PLACED);
             orderProductRepository.save(item);
 
             OrderStatus status = new OrderStatus();
@@ -116,7 +118,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         cartRepository.deleteAll(cartItems);
-
+        String msg=messageSource.getMessage("order.success",null,locale);
         return new OrderResponse("Order placed successfully", order.getId());
     }
 
@@ -191,13 +193,14 @@ public class OrderServiceImpl implements OrderService {
             item.setProductVariation(variation);
             item.setQuantity(cart.getQuantity());
             item.setPrice(variation.getPrice()* cart.getQuantity());
+            item.setCurrentStatus(ORDER_PLACED);
 
             orderProductRepository.save(item);
 
             OrderStatus status = new OrderStatus();
             status.setOrderProduct(item);
             status.setFromStatus(null);
-            status.setToStatus(OrderState.ORDER_PLACED);
+            status.setToStatus(ORDER_PLACED);
             status.setTransitionDate(LocalDateTime.now());
 
             orderStatusRepository.save(status);
@@ -256,6 +259,7 @@ public class OrderServiceImpl implements OrderService {
         item.setProductVariation(variation);
         item.setQuantity(request.getQuantity());
         item.setPrice(variation.getPrice());
+        item.setCurrentStatus(ORDER_PLACED);
 
         orderProductRepository.save(item);
         OrderStatus status = new OrderStatus();
@@ -287,21 +291,17 @@ public class OrderServiceImpl implements OrderService {
         if (!order.getCustomer().getId().equals(user.getId()))
             throw new RuntimeException("Unauthorized cancellation");
 
-        OrderStatus latestStatus = orderItem.getStatusHistory()
-                .stream()
-                .max(Comparator.comparing(OrderStatus::getTransitionDate))
-                .orElseThrow(() -> new RuntimeException("No status found"));
+        OrderState status = orderItem.getCurrentStatus();
 
-        OrderState currentStatus = latestStatus.getToStatus();
+        boolean cancellable = status == OrderState.ORDER_PLACED || status == OrderState.ORDER_CONFIRMED;
 
-        if (currentStatus != OrderState.ORDER_PLACED && currentStatus != OrderState.ORDER_CONFIRMED) {
-
+        if (!cancellable) {
             throw new RuntimeException("Cannot cancel at this stage");
         }
 
         OrderStatus cancelStatus = new OrderStatus();
         cancelStatus.setOrderProduct(orderItem);
-        cancelStatus.setFromStatus(currentStatus);
+        cancelStatus.setFromStatus(status);
         cancelStatus.setToStatus(OrderState.CANCELLED);
         cancelStatus.setTransitionDate(LocalDateTime.now());
 
@@ -368,12 +368,7 @@ public class OrderServiceImpl implements OrderService {
                 .stream()
                 .map(op -> {
 
-                    String status = op.getStatusHistory()
-                            .stream()
-                            .max(Comparator.comparing(OrderStatus::getTransitionDate))
-                            .map(os -> os.getToStatus().name())
-                            .orElse("UNKNOWN");
-
+                    String status = op.getCurrentStatus().name();
                     return new OrderProductResponseDTO(
                             op.getId(),
                             status,
@@ -465,11 +460,7 @@ public class OrderServiceImpl implements OrderService {
                 .stream()
                 .map(op -> {
 
-                    String status = op.getStatusHistory()
-                            .stream()
-                            .max(Comparator.comparing(OrderStatus::getTransitionDate))
-                            .map(os -> os.getToStatus().name())
-                            .orElse("UNKNOWN");
+                    String status = op.getCurrentStatus().name();
 
                     return new OrderProductResponseDTO(
                             op.getId(),
@@ -486,6 +477,37 @@ public class OrderServiceImpl implements OrderService {
                 order.getDateCreated(),
                 products
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void notifyPendingOrders() {
+
+        List<OrderProduct> pendingItems =
+                orderProductRepository.findPendingSellerActionOrderProducts(ORDER_PLACED.name());
+
+        if (pendingItems.isEmpty()) {
+            return;
+        }
+
+        Map<Seller, List<OrderProduct>> itemsBySeller = new HashMap<>();
+
+        for (OrderProduct item : pendingItems) {
+
+            Seller seller = item.getProductVariation()
+                    .getProduct()
+                    .getSeller();
+
+            if (!itemsBySeller.containsKey(seller)) {
+                itemsBySeller.put(seller, new ArrayList<>());
+            }
+
+            itemsBySeller.get(seller).add(item);
+        }
+
+        for (Map.Entry<Seller, List<OrderProduct>> entry : itemsBySeller.entrySet()) {
+            emailService.sendPendingOrdersReminder(entry.getKey(), entry.getValue());
+        }
     }
 
 }

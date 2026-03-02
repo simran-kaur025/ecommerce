@@ -4,14 +4,16 @@ import com.bootcamp.ecommerce.DTO.*;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
+import java.util.Locale;
 
 public interface CategoryService {
-    ResponseDTO addCategory(CategoryRequestDTO dto);
+    ResponseDTO addCategory(CategoryRequestDTO dto, Locale locale);
     CategoryResponse getOneCategory(Long categoryId);
-    Page<CategoryResponse> getAllCategories(int offset, int max, String sortBy, String order, String query);
+    Page<CategoryResponse> getAllCategories(RequestParams requestParams);
     void addMetadataToCategory( AddCategoryMetadataRequest request);
     void updateMetadataValues(AddCategoryMetadataRequest request);
     void updateCategory(BasicCategoryDTO request);
     List<LeafCategoryResponse> getAllCategoriesAsSeller();
     List<CategoryResponse> getCategoriesAsCustomer(Long categoryId);
+    FilterResponse getFilterData(Long categoryId);
 }

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Set;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
     boolean existsByCategoryId(Long categoryId);
@@ -83,7 +84,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
      boolean existsByCategoryIdAndIsDeletedFalse(Long id);
 
-
-
+    @Query(value = """
+        SELECT DISTINCT p.brand
+        FROM products p
+        WHERE p.category_id IN (:categoryIds)
+        """,
+            nativeQuery = true)
+    List<String> findDistinctBrandByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
 
 }

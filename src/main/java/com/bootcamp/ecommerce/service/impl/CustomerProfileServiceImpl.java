@@ -50,7 +50,6 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                 .lastName(user.getLastName())
                 .isActive(user.getIsActive())
                 .contact(customer.getContact())
-//                .image(customer.getImage())
 
                 .build();
     }

@@ -4,10 +4,11 @@ import com.bootcamp.ecommerce.DTO.CustomerRequestDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.DTO.SellerRequestDTO;
 
-public interface RegisterService {
-     ResponseDTO registerCustomer(CustomerRequestDTO requestDTO);
+import java.util.Locale;
 
-     ResponseDTO registerSeller(SellerRequestDTO requestDTO);
+public interface RegisterService {
+     ResponseDTO registerCustomer(CustomerRequestDTO requestDTO, Locale locale);
+     ResponseDTO registerSeller(SellerRequestDTO requestDTO, Locale locale);
 
      ResponseDTO activateAccount(String token);
 

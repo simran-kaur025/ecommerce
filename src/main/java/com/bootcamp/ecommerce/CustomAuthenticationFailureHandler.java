@@ -23,10 +23,7 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
     private final UserRepository userRepository;
 
     @Override
-    public void onAuthenticationFailure(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationException exception) throws IOException {
+    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException {
 
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
@@ -52,10 +49,7 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
         if (email != null) {
             userRepository.findByEmail(email)
                     .ifPresent(user -> {
-                        int attempts =
-                                user.getInvalidAttemptCount() == null
-                                        ? 1
-                                        : user.getInvalidAttemptCount() + 1;
+                        int attempts = user.getInvalidAttemptCount() == null ? 1 : user.getInvalidAttemptCount() + 1;
 
                         user.setInvalidAttemptCount(attempts);
 

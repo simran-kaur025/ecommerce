@@ -3,28 +3,33 @@ package com.bootcamp.ecommerce.controller;
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.service.CategoryService;
+import com.bootcamp.ecommerce.utils.RequestParamsExtractor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/category")
 public class CategoryController {
     private final CategoryService categoryService;
+    private final RequestParamsExtractor extractor;
 
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/add/category")
-    public ResponseEntity<ResponseDTO> addCategory(@Valid @RequestBody CategoryRequestDTO request) {
+    public ResponseEntity<ResponseDTO> addCategory(@Valid @RequestBody CategoryRequestDTO request, Locale locale) {
 
-        ResponseDTO response = categoryService.addCategory(request);
+        ResponseDTO response = categoryService.addCategory(request,locale);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -47,14 +52,11 @@ public class CategoryController {
 
     @GetMapping("/get/all/categories")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO> viewAllCategories(
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(required = false) String query) {
+    public ResponseEntity<ResponseDTO> viewAllCategories(@RequestParam Map<String,String> allParams) {
 
-        Page<CategoryResponse> response = categoryService.getAllCategories(offset, max, sortBy, order, query);
+        RequestParams requestParams = extractor.extract(allParams);
+
+        Page<CategoryResponse> response = categoryService.getAllCategories(requestParams);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -133,6 +135,13 @@ public class CategoryController {
                 .message("Categories fetched successfully")
                 .data(data)
                 .build();
+    }
+
+    @GetMapping("/{categoryId}/filters")
+    public ResponseEntity<FilterResponse> getFilterData(@PathVariable Long categoryId) {
+
+        FilterResponse response = categoryService.getFilterData(categoryId);
+        return ResponseEntity.ok(response);
     }
 
 

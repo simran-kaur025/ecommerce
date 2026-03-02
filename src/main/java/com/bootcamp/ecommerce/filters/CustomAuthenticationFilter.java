@@ -3,15 +3,19 @@ package com.bootcamp.ecommerce.filters;
 import com.bootcamp.ecommerce.CustomUserDetails;
 import com.bootcamp.ecommerce.DTO.LoginRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginResponseDTO;
+import com.bootcamp.ecommerce.entity.AccessToken;
 import com.bootcamp.ecommerce.entity.RefreshToken;
 import com.bootcamp.ecommerce.entity.User;
+import com.bootcamp.ecommerce.repository.AccessTokenRepository;
 import com.bootcamp.ecommerce.repository.RefreshTokenRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.service.JwtTokenService;
+import com.bootcamp.ecommerce.service.TokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.catalina.webresources.TomcatJarInputStream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.*;
@@ -26,15 +30,24 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
 
     private final UserRepository userRepository;
     private final JwtTokenService jwtTokenService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
       RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    AccessTokenRepository accessTokenRepository;
+
+    @Autowired
+    TokenService tokenService;
+
+
     public CustomAuthenticationFilter(UserRepository userRepository, JwtTokenService jwtTokenService) {
 
         this.userRepository = userRepository;
         this.jwtTokenService = jwtTokenService;
+
     }
 
 
@@ -42,6 +55,7 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) {
 
         try {
+
             LoginRequestDTO loginRequest = objectMapper.readValue(request.getInputStream(), LoginRequestDTO.class);
 
             request.setAttribute("LOGIN_EMAIL", loginRequest.getEmail());
@@ -58,10 +72,7 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
                 throw new DisabledException("Account not activated");
             }
 
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            loginRequest.getEmail(),
-                            loginRequest.getPassword()
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()
                     );
 
             return this.getAuthenticationManager().authenticate(authToken);
@@ -85,15 +96,26 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
         user.setInvalidAttemptCount(0);
         userRepository.save(user);
 
+        tokenService.revokeAllTokens(user.getId());
+
         String accessToken = jwtTokenService.generateAccessToken(user);
         String refreshToken = jwtTokenService.generateRefreshToken(user);
+
+
+        AccessToken accessTokenEntity = new AccessToken();
+        accessTokenEntity.setToken(accessToken);
+        accessTokenEntity.setUser(user);
+        accessTokenEntity.setStatus(1);
+        accessTokenEntity.setExpiryDate(jwtTokenService.getAccessTokenExpiryDate());
+
+        accessTokenRepository.save(accessTokenEntity);
 
         RefreshToken tokenEntity = new RefreshToken();
         tokenEntity.setToken(refreshToken);
         tokenEntity.setUser(user);
-        tokenEntity.setExpiryDate(
-                jwtTokenService.getRefreshTokenExpiryDate()
-        );
+        tokenEntity.setStatus(1);
+        tokenEntity.setExpiryDate(jwtTokenService.getRefreshTokenExpiryDate());
+
 
         refreshTokenRepository.save(tokenEntity);
 
@@ -106,9 +128,6 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        objectMapper.writeValue(
-                response.getOutputStream(),
-                loginResponse
-        );
+        objectMapper.writeValue(response.getOutputStream(), loginResponse);
     }
 }

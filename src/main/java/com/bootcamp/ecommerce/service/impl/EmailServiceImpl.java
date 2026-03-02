@@ -1,7 +1,9 @@
 package com.bootcamp.ecommerce.service.impl;
 
 import com.bootcamp.ecommerce.constant.Constant;
+import com.bootcamp.ecommerce.entity.OrderProduct;
 import com.bootcamp.ecommerce.entity.Product;
+import com.bootcamp.ecommerce.entity.Seller;
 import com.bootcamp.ecommerce.service.EmailService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +15,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_APPROVAL_SUBJECT;
-import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_DEACTIVATED_SUBJECT;
+import java.util.List;
+
+import static com.bootcamp.ecommerce.constant.Constant.*;
 
 @Slf4j
 @Service
@@ -158,6 +161,19 @@ public class EmailServiceImpl implements EmailService {
 
 
     @Async
+    @Override
+    public void sendAccountActivatedEmail(String email) {
+
+        sendEmail(email, Constant.ACCOUNT_ACTIVATED_SUBJECT, Constant.ACCOUNT_ACTIVATED_MESSAGE);
+    }
+    @Async
+    @Override
+    public void sendAccountDeactivatedEmail(String email) {
+
+        sendEmail(email, Constant.ACCOUNT_DEACTIVATED_SUBJECT, Constant.ACCOUNT_DEACTIVATED_MESSAGE);
+    }
+
+    @Async
     public void sendEmail(String to, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
@@ -168,4 +184,24 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+
+    @Async
+    @Override
+    public void sendPendingOrdersReminder(Seller seller, List<OrderProduct> items) {
+
+        String subject = PENDING_ORDERS_SUBJECT;
+
+        String itemDetails = "";
+        for (OrderProduct item : items) {
+            itemDetails += "OrderProductId: " + item.getId()
+                    + " (OrderId: " + item.getOrder().getId() + ")\n";
+        }
+
+        String body = String.format(
+                PENDING_ORDERS_MESSAGE_PREFIX,
+                seller.getUser().getFirstName()
+        ) + itemDetails + PENDING_ORDERS_MESSAGE_SUFFIX;
+
+        sendEmail(seller.getUser().getEmail(), subject, body);
+    }
 }

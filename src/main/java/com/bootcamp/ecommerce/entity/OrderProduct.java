@@ -1,5 +1,6 @@
 package com.bootcamp.ecommerce.entity;
 
+import com.bootcamp.ecommerce.enums.OrderState;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,8 +31,8 @@ public class OrderProduct extends Auditable{
     @Column(nullable = false)
     private Double price;
 
-    @OneToMany(mappedBy = "orderProduct", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("transitionDate DESC")
-    private List<OrderStatus> statusHistory;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "current_status", nullable = false)
+    private OrderState currentStatus;
 
 }

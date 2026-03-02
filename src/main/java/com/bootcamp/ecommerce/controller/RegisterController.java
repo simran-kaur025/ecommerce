@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Locale;
+
 @RestController
 @RequestMapping("/api/register")
 @RequiredArgsConstructor
@@ -21,11 +23,11 @@ public class RegisterController {
     private final RegisterService registerService;
 
     @PostMapping("/customer")
-    public ResponseEntity<ResponseDTO> registerCustomer(@Valid @RequestBody CustomerRequestDTO requestDTO) {
+    public ResponseEntity<ResponseDTO> registerCustomer(@Valid @RequestBody CustomerRequestDTO requestDTO, Locale locale) {
 
         log.info("Register request received for email: {}", requestDTO.getEmail());
 
-        ResponseDTO response = registerService.registerCustomer(requestDTO);
+        ResponseDTO response = registerService.registerCustomer(requestDTO,locale);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -58,12 +60,11 @@ public class RegisterController {
 
 
     @PostMapping("/seller")
-    public ResponseEntity<ResponseDTO> registerSeller(
-            @Valid @RequestBody SellerRequestDTO requestDTO) {
+    public ResponseEntity<ResponseDTO> registerSeller(@Valid @RequestBody SellerRequestDTO requestDTO, Locale locale) {
 
         log.info("Seller registration request received");
 
-        ResponseDTO response = registerService.registerSeller(requestDTO);
+        ResponseDTO response = registerService.registerSeller(requestDTO,locale);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

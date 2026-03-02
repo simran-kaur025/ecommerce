@@ -7,6 +7,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CategoryMetadataFieldRequest {
-    @NotBlank
+    @NotBlank(message = "name is required")
     private String name;
 }

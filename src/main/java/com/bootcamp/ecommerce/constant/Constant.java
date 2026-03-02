@@ -65,4 +65,19 @@ public interface Constant {
 
         Please review and approve the product.
         """;
+
+    public static final String ACCOUNT_DEACTIVATED_SUBJECT = "Account Deactivated";
+
+    public static final String ACCOUNT_DEACTIVATED_MESSAGE = "Your account has been deactivated. Please contact support if this was not expected.";
+
+
+    public static final String ACCOUNT_ACTIVATED_SUBJECT = "Account Activated";
+
+    public static final String ACCOUNT_ACTIVATED_MESSAGE = "Your account has been Activated.";
+    public static final String PENDING_ORDERS_SUBJECT = "Pending Orders Reminder";
+
+    public static final String PENDING_ORDERS_MESSAGE_PREFIX = "Hello %s,You have pending order items:\n";
+
+    public static final String PENDING_ORDERS_MESSAGE_SUFFIX = "\n\nPlease review them in the dashboard.";
 }
+

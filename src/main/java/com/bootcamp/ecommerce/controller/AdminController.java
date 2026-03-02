@@ -51,18 +51,18 @@ public class AdminController {
 
     @PatchMapping("/{customerId}/activate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseDTO activateCustomer(@PathVariable Long customerId) {
+    public ResponseDTO activateUser(@PathVariable Long userId) {
 
-        return adminUserService.activateCustomer(customerId);
+        return adminUserService.activateUser(userId);
 
     }
 
 
     @PatchMapping("/{customerId}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseDTO deactivateCustomer(@PathVariable Long customerId) {
+    public ResponseDTO deactivateUser(@PathVariable Long userId) {
 
-       return adminUserService.deactivateCustomer(customerId);
+       return adminUserService.deactivateUser(userId);
 
     }
 

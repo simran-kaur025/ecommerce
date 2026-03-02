@@ -4,7 +4,6 @@ import com.bootcamp.ecommerce.DTO.AddressDTO;
 import com.bootcamp.ecommerce.DTO.SellerProfileResponseDTO;
 import com.bootcamp.ecommerce.DTO.SellerProfileUpdateRequestDTO;
 import com.bootcamp.ecommerce.DTO.UserValidationDTO;
-import com.bootcamp.ecommerce.SecurityUtils;
 import com.bootcamp.ecommerce.entity.Address;
 import com.bootcamp.ecommerce.entity.Seller;
 import com.bootcamp.ecommerce.entity.User;
@@ -15,7 +14,6 @@ import com.bootcamp.ecommerce.repository.SellerRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.service.SellerProfileService;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.query.sql.internal.ParameterRecognizerImpl;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +30,9 @@ public class SellerProfileServiceImpl implements SellerProfileService {
 
     @Override
     public SellerProfileResponseDTO getMyProfile() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        User user = SecurityUtils.getCurrentUser();
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
         Seller seller = sellerRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));

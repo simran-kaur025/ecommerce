@@ -5,9 +5,10 @@ import com.bootcamp.ecommerce.DTO.SellerRequestDTO;
 import com.bootcamp.ecommerce.DTO.UserValidationDTO;
 
 import java.util.List;
+import java.util.Locale;
 
 public interface RegisterValidationService {
-    void validateCustomer(CustomerRequestDTO request, List<UserValidationDTO> validationErrors);
-    void validateSeller(SellerRequestDTO request, List<UserValidationDTO> errors);
+    void validateCustomer(CustomerRequestDTO request, List<UserValidationDTO> validationErrors, Locale locale);
+    void validateSeller(SellerRequestDTO request, List<UserValidationDTO> errors, Locale locale);
 }
 

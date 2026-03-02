@@ -18,12 +18,14 @@
     import jakarta.transaction.Transactional;
     import lombok.RequiredArgsConstructor;
     import lombok.extern.slf4j.Slf4j;
+    import org.springframework.context.MessageSource;
     import org.springframework.security.crypto.password.PasswordEncoder;
     import org.springframework.stereotype.Service;
 
     import java.time.LocalDateTime;
     import java.util.ArrayList;
     import java.util.List;
+    import java.util.Locale;
     import java.util.Optional;
 
     @Service
@@ -44,13 +46,15 @@
        private final ActivationTokenService activationTokenService;
        private final EmailService emailService;
 
+       private final MessageSource messageSource;
+
 
         @Transactional
         @Override
-        public ResponseDTO registerCustomer(CustomerRequestDTO requestDTO) {
+        public ResponseDTO registerCustomer(CustomerRequestDTO requestDTO, Locale locale) {
 
             List<UserValidationDTO> errors = new ArrayList<>();
-            registerValidationService.validateCustomer(requestDTO, errors);
+            registerValidationService.validateCustomer(requestDTO, errors,locale);
 
             if (!errors.isEmpty()) {
                 log.error("Customer registration validation failed for email: {}", requestDTO.getEmail());
@@ -85,19 +89,20 @@
             }
             log.info("Customer registered successfully for email: {}", user.getEmail());
 
+            String msg = messageSource.getMessage("success.register", null, locale);
             return ResponseDTO.builder()
                     .status(Constant.SUCCESS)
-                    .message("Customer registered successfully. Please check your email to activate your account.")
+                    .message(msg)
                     .build();
         }
 
 
         @Transactional
         @Override
-        public ResponseDTO registerSeller(SellerRequestDTO requestDTO) {
+        public ResponseDTO registerSeller(SellerRequestDTO requestDTO, Locale locale) {
 
             List<UserValidationDTO> errors = new ArrayList<>();
-            registerValidationService.validateSeller(requestDTO, errors);
+            registerValidationService.validateSeller(requestDTO, errors,locale);
 
             if (!errors.isEmpty()) {
                 log.error("Seller registration validation failed for email: {}", requestDTO.getEmail());

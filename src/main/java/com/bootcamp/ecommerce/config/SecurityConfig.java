@@ -32,69 +32,46 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CustomAuthenticationFailureHandler customAuthenticationFailureHandler;
 
-
-    private  final CustomAuthenticationFailureHandler customAuthenticationFailureHandler;
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   CustomAuthenticationFilter customFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomAuthenticationFilter customFilter) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterAt(
-                        customFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
+                .addFilterAt(customFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/logout",
-                                "/api/register/seller",
-                                "/api/register/customer",
-                                "/api/register/customer/activate",
-                                "/api/register/resend-activation",
-                                "/api/auth/refresh",
-                                "/api/auth/forgot-password",
-                                "/api/auth/reset-password",
-                                "/api/admin/customers",
-                                "/api/admin/sellers",
-                                "/api/admin/{customerId}/activate",
-                                "/api/admin/{customerId}/deactivate",
-                                "/api/customer/addresses",
-                                "/api/customer/profile",
-                                "/api/metadata/add/metadata-fields",
-                                "/api/metadata/get/metadata-fields",
-                                "/api/category/add/category"
-                        ).permitAll()
 
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/register/**").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/rabbit/send").permitAll()
+                        .requestMatchers("/api/category/**").permitAll()
                         .anyRequest().authenticated()
                 );
 
         return http.build();
     }
+
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 
     @Bean
-    public CustomAuthenticationFilter customAuthenticationFilter(
-            AuthenticationManager authenticationManager,
-            JwtTokenService jwtTokenService,
-            UserRepository userRepository) {
+    public CustomAuthenticationFilter customAuthenticationFilter(AuthenticationManager authenticationManager, JwtTokenService jwtTokenService, UserRepository userRepository) {
 
-        CustomAuthenticationFilter filter =
-                new CustomAuthenticationFilter(userRepository, jwtTokenService);
+        CustomAuthenticationFilter filter = new CustomAuthenticationFilter(userRepository, jwtTokenService);
 
         filter.setAuthenticationManager(authenticationManager);
         filter.setAuthenticationFailureHandler(customAuthenticationFailureHandler);
@@ -103,16 +80,13 @@ public class SecurityConfig {
         return filter;
     }
 
-
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }

@@ -1,11 +1,14 @@
 package com.bootcamp.ecommerce.service.impl;
 
+import com.bootcamp.ecommerce.entity.AccessToken;
 import com.bootcamp.ecommerce.entity.User;
+import com.bootcamp.ecommerce.repository.AccessTokenRepository;
 import com.bootcamp.ecommerce.service.JwtTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -13,9 +16,11 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.Optional;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class JwtTokenServiceImpl implements JwtTokenService {
 
     @Value("${jwt.secret}")
@@ -26,6 +31,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
     @Value("${jwt.refresh-token-expiry}")
     private long refreshTokenExpiry;
+
+    private final AccessTokenRepository accessTokenRepository;
 
 
     @Override
@@ -39,6 +46,11 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     }
 
     @Override
+    public Date getAccessTokenExpiryDate() {
+        return new Date(System.currentTimeMillis() + accessTokenExpiry);
+    }
+
+    @Override
     public String generateRefreshToken(User user) {
 
         return Jwts.builder()
@@ -48,6 +60,8 @@ public class JwtTokenServiceImpl implements JwtTokenService {
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+
     public Date getRefreshTokenExpiryDate() {
         return new Date(System.currentTimeMillis() + refreshTokenExpiry);
     }
@@ -63,11 +77,19 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @Override
     public boolean isTokenValid(String token, UserDetails userDetails) {
         return extractUsername(token).equals(userDetails.getUsername())
-                && !isTokenExpired(token);
+                && !isTokenExpired(token) &&isAccessTokenActive(token) ;
     }
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
+    }
+
+
+    public boolean isAccessTokenActive(String token) {
+
+        return accessTokenRepository.findByToken(token)
+                .map(t -> Integer.valueOf(1).equals(t.getStatus()))
+                .orElse(false);
     }
 
     private Date extractExpiration(String token) {

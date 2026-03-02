@@ -5,23 +5,26 @@ import com.bootcamp.ecommerce.entity.Category;
 import com.bootcamp.ecommerce.entity.CategoryMetadataField;
 import com.bootcamp.ecommerce.entity.CategoryMetadataFieldValue;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
-import com.bootcamp.ecommerce.repository.CategoryMetadataFieldRepository;
-import com.bootcamp.ecommerce.repository.CategoryMetadataFieldValueRepository;
-import com.bootcamp.ecommerce.repository.CategoryRepository;
-import com.bootcamp.ecommerce.repository.ProductRepository;
+import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.CategoryService;
 import com.bootcamp.ecommerce.service.CategoryValidationService;
+import com.bootcamp.ecommerce.specifications.CategorySpecification;
+import com.bootcamp.ecommerce.specifications.MetadataFieldSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.bootcamp.ecommerce.specifications.MetadataFieldSpecification.filter;
 
 @Service
 @RequiredArgsConstructor
@@ -31,10 +34,11 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryMetadataFieldValueRepository categoryMetadataFieldValueRepository;
     private final CategoryMetadataFieldRepository categoryMetadataFieldRepository;
     private final ProductRepository productRepository;
-
+    private final MessageSource messageSource;
+    private final ProductVariationRepository productVariationRepository;
     @Override
     @Transactional
-    public ResponseDTO addCategory(CategoryRequestDTO dto) {
+    public ResponseDTO addCategory(CategoryRequestDTO dto, Locale locale) {
         Category parent = null;
 
         if (dto.getParentId() != null) {
@@ -62,10 +66,10 @@ public class CategoryServiceImpl implements CategoryService {
         category.setParentCategory(parent);
 
        categoryRepository.save(category);
-
+       String msg=messageSource.getMessage("category.created.success",null,locale);
         return ResponseDTO.builder()
                 .status("SUCCESS")
-                .message("Category created successfully")
+                .message(msg)
                 .data(category.getId())
                 .build();
     }
@@ -75,8 +79,6 @@ public class CategoryServiceImpl implements CategoryService {
         if (categoryRepository.existsByNameIgnoreCaseAndParentCategory(name, parent)) {
             return false;
         }
-
-        // Check ancestors
         Category current = parent;
         while (current != null) {
             if (current.getName().equalsIgnoreCase(name)) {
@@ -157,23 +159,24 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CategoryResponse> getAllCategories(int offset, int max, String sortBy, String order, String query) {
+    public Page<CategoryResponse> getAllCategories(RequestParams params) {
 
-        if (max <= 0) {
+        if (params.getMax() <= 0) {
             throw new IllegalArgumentException("Max must be greater than 0");
         }
 
-        Sort.Direction direction = order.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Specification<Category> specification = CategorySpecification.filter(params.getFilters());
 
-        Pageable pageable = PageRequest.of(offset / max, max, Sort.by(direction, sortBy));
+        Sort.Direction direction = Sort.Direction.fromOptionalString(params.getOrder())
+                        .orElse(Sort.Direction.ASC);
 
-        Page<Category> categoryPage;
+        Sort sort = Sort.by(direction, params.getSortBy());
 
-        if (query != null && !query.isBlank()) {
-            categoryPage = categoryRepository.findByNameContainingIgnoreCase(query, pageable);
-        } else {
-            categoryPage = categoryRepository.findAll(pageable);
-        }
+        int pageNumber = params.getOffset() / params.getMax();
+
+        Pageable pageable = PageRequest.of(pageNumber, params.getMax(), sort);
+
+        Page<Category> categoryPage = categoryRepository.findAll(specification, pageable);
 
         return categoryPage.map(this::mapToCategoryResponse);
     }
@@ -381,5 +384,61 @@ public class CategoryServiceImpl implements CategoryService {
                 .name(category.getName())
                 .metadata(getMetaFields(category))
                 .build();
+    }
+
+    public FilterResponse getFilterData(Long categoryId) {
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        List<Category> categories = getAllDescendantCategories(category);
+
+        List<Long> categoryIds = categories.stream()
+                .map(Category::getId)
+                .toList();
+
+
+        Map<String, List<String>> metadataFields = new HashMap<>();
+
+        List<CategoryMetadataFieldValue> values = categoryMetadataFieldValueRepository.findByCategoryIds(categoryIds);
+
+        for (CategoryMetadataFieldValue value : values) {
+
+            String fieldName = value.getCategoryMetadataField().getName();
+            String fieldValue = value.getValueList();
+            metadataFields.putIfAbsent(fieldName, new ArrayList<>());
+
+            if (!metadataFields.get(fieldName).contains(fieldValue)) {
+                metadataFields.get(fieldName).add(fieldValue);
+            }
+        }
+
+        List<String> brands = productRepository.findDistinctBrandByCategoryIds(categoryIds);
+
+        Double minPrice = 0.0;
+        Double maxPrice = 0.0;
+
+        Object[] priceRange = productVariationRepository.findMinMaxPriceByCategories(categoryIds);
+
+        if (priceRange != null && priceRange[0] != null && priceRange[1] != null) {
+            minPrice = (Double) priceRange[0];
+            maxPrice = (Double) priceRange[1];
+        }
+
+        return new FilterResponse(metadataFields, brands, minPrice, maxPrice);
+    }
+
+    private List<Category> getAllDescendantCategories(Category category) {
+
+        List<Category> result = new ArrayList<>();
+        result.add(category);
+
+        List<Category> children = categoryRepository.findByParentCategory(category);
+
+        for (Category child : children) {
+            result.addAll(getAllDescendantCategories(child));
+        }
+
+        return result;
     }
 }
