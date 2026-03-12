@@ -7,6 +7,7 @@ import com.bootcamp.ecommerce.enums.PaymentMethod;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.OrderService;
+import com.bootcamp.ecommerce.specifications.OrderSpecifications;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.weaver.ast.Or;
 import org.springframework.context.MessageSource;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -388,70 +390,83 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponseDTO> listMyOrders(int max, int offset, String sort, String order, String query) {
+    public Page<OrderResponseDTO> listMyOrders(RequestParams requestParams) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
-        Sort.Direction direction = order.equalsIgnoreCase("desc")
-                ? Sort.Direction.DESC
-                : Sort.Direction.ASC;
+        filters.put("customerEmail", email);
+        Specification<Order> specification = OrderSpecifications.extract(filters);
 
-        Pageable pageable = PageRequest.of(offset, max, Sort.by(direction, sort));
+        Sort.Direction direction = Sort.Direction
+                .fromOptionalString(requestParams.getOrder())
+                .orElse(Sort.Direction.ASC);
 
-        Page<Order> orders;
+        int pageNumber = requestParams.getOffset() / requestParams.getMax();
 
-        if (query != null && !query.isBlank()) {
-            orders = orderRepository.searchMyOrders(user.getId(), query, pageable);
-        } else {
-            orders = orderRepository.findByCustomerId(user.getId(), pageable);
-        }
+        Pageable pageable = PageRequest.of(
+                pageNumber,
+                requestParams.getMax(),
+                Sort.by(direction, requestParams.getSortBy())
+        );
+
+
+        Page<Order> orders = orderRepository.findAll(specification, pageable);
 
         return orders.map(this::toDto);
+
     }
 
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponseDTO> listOrdersOfMyProducts(int max, int offset, String sort, String order, String query) {
+    public Page<OrderResponseDTO> listOrdersOfMyProducts(RequestParams requestParams) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        User seller = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Seller not found"));
+        User seller = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Seller not found"));
 
-        Sort.Direction direction = order.equalsIgnoreCase("desc")
-                ? Sort.Direction.DESC
-                : Sort.Direction.ASC;
+        Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
-        Pageable pageable = PageRequest.of(offset, max, Sort.by(direction, sort));
+        filters.put("sellerEmail", email);
+        Specification<Order> specification = OrderSpecifications.extract(filters);
 
-        Page<Order> orders = orderRepository.findOrdersBySellerProducts(seller.getId(), query, pageable);
+        Sort.Direction direction = Sort.Direction
+                .fromOptionalString(requestParams.getOrder())
+                .orElse(Sort.Direction.ASC);
+
+        int pageNumber = requestParams.getOffset() / requestParams.getMax();
+
+        Pageable pageable = PageRequest.of(
+                pageNumber,
+                requestParams.getMax(),
+                Sort.by(direction, requestParams.getSortBy())
+        );
+
+        Page<Order> orders = orderRepository.findAll(specification, pageable);
 
         return orders.map(this::toDto);
+
     }
 
 
-    public Page<OrderResponseDTO> getAllOrdersAsAdmin(int max, int offset,
-                                               String sort, String order,
-                                               String query) {
+    public Page<OrderResponseDTO> getAllOrdersAsAdmin(RequestParams requestParams) {
 
-        Sort.Direction direction =
-                order.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Map<String, String> filters = new HashMap<>(requestParams.getFilters());
+        Specification<Order> specification = OrderSpecifications.extract(filters);
 
-        Pageable pageable = PageRequest.of(offset, max, Sort.by(direction, sort));
+        Sort.Direction direction = Sort.Direction
+                .fromOptionalString(requestParams.getOrder())
+                .orElse(Sort.Direction.ASC);
 
-        Page<Order> orders;
+        int pageNumber = requestParams.getOffset() / requestParams.getMax();
 
-        if (query != null && !query.isEmpty()) {
-            orders = orderRepository.searchOrders(query, pageable);
-        } else {
-            orders = orderRepository.findAll(pageable);
-        }
+        Pageable pageable = PageRequest.of(pageNumber, requestParams.getMax(), Sort.by(direction, requestParams.getSortBy()));
 
-        return orders.map(this::mapToDTO);
+        Page<Order> orders = orderRepository.findAll(specification, pageable);
+
+        return orders.map(this::toDto);
     }
 
     private OrderResponseDTO mapToDTO(Order order) {

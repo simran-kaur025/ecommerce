@@ -2,6 +2,7 @@ package com.bootcamp.ecommerce.controller;
 
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.service.OrderService;
+import com.bootcamp.ecommerce.utils.RequestParamsExtractor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cglib.core.Local;
@@ -11,12 +12,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Locale;
+import java.util.Map;
 
 @RequestMapping("/api/order")
 @RestController
 @RequiredArgsConstructor
 public class OrderController {
     private final OrderService orderService;
+    private final RequestParamsExtractor extractor;
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/place/order")
@@ -66,29 +69,22 @@ public class OrderController {
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/view/all/orders")
-    public ResponseEntity<Page<OrderResponseDTO>> listMyOrders(
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "dateCreated") String sort,
-            @RequestParam(defaultValue = "desc") String order,
-            @RequestParam(required = false) String query) {
-
-        Page<OrderResponseDTO> response = orderService.listMyOrders(max, offset, sort, order, query);
+    public ResponseEntity<Page<OrderResponseDTO>> listMyOrders(@RequestParam Map<String ,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
+        Page<OrderResponseDTO> response = orderService.listMyOrders(requestParams);
 
         return ResponseEntity.ok(response);
     }
 
+
+
 /* Seller Order Api */
     @PreAuthorize("hasRole('SELLER')")
     @GetMapping("/seller/view/all/orders")
-    public ResponseEntity<Page<OrderResponseDTO>> listOrdersOfMyProducts(
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "dateCreated") String sort,
-            @RequestParam(defaultValue = "desc") String order,
-            @RequestParam(required = false) String query) {
+    public ResponseEntity<Page<OrderResponseDTO>> listOrdersOfMyProducts(@RequestParam Map<String ,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
 
-        Page<OrderResponseDTO> response = orderService.listOrdersOfMyProducts(max, offset, sort, order, query);
+        Page<OrderResponseDTO> response = orderService.listOrdersOfMyProducts(requestParams);
 
         return ResponseEntity.ok(response);
     }
@@ -98,13 +94,9 @@ public class OrderController {
     // Admin Order Api
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/get/all/orders")
-    public Page<OrderResponseDTO> getAllOrders(
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "id") String sort,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(required = false) String query
-    ) {
-        return orderService.getAllOrdersAsAdmin(max, offset, sort, order, query);
+    public ResponseEntity<Page<OrderResponseDTO>>  getAllOrders(@RequestParam Map<String ,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
+        Page<OrderResponseDTO> response = orderService.getAllOrdersAsAdmin(requestParams);
+        return ResponseEntity.ok(response);
     }
 }

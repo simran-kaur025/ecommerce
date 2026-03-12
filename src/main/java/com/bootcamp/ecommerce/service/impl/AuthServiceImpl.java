@@ -20,6 +20,7 @@ import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.JwtTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -53,6 +54,9 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final MessageSource messageSource;
 
+    @Value("${password.reset.token.expiry}")
+    private long tokenExpiry;
+
     @Override
     public ResponseDTO login(LoginRequestDTO requestDTO) {
 
@@ -85,9 +89,7 @@ public class AuthServiceImpl implements AuthService {
             RefreshToken tokenEntity = new RefreshToken();
             tokenEntity.setToken(refreshToken);
             tokenEntity.setUser(user);
-            tokenEntity.setExpiryDate(
-                    jwtTokenService.getRefreshTokenExpiryDate()
-            );
+            tokenEntity.setExpiryDate(jwtTokenService.getRefreshTokenExpiryDate());
 
             refreshTokenRepository.save(tokenEntity);
             return ResponseDTO.builder()
@@ -231,7 +233,7 @@ public class AuthServiceImpl implements AuthService {
         resetToken.setToken(token);
         resetToken.setUser(user);
         resetToken.setExpiryDate(
-                new Date(System.currentTimeMillis() + 15 * 60 * 1000)
+                new Date(System.currentTimeMillis() + tokenExpiry)
         );
 
         forgotPasswordTokenRepository.save(resetToken);
@@ -277,7 +279,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPassword(passwordEncoder.encode(password));
         user.setPasswordUpdateDate(LocalDateTime.now());
-        userRepository.save(user);
+        userRepository.saveAndFlush(user);
 
         forgotPasswordTokenRepository.delete(resetToken);
         return ResponseDTO.builder()
@@ -317,7 +319,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setPasswordUpdateDate(LocalDateTime.now());
-        userRepository.save(user);
+        userRepository.saveAndFlush(user);
 
         emailService.sendPasswordChangeEmail(user.getEmail());
     }

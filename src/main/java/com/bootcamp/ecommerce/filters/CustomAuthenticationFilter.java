@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.catalina.webresources.TomcatJarInputStream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.*;
@@ -28,26 +27,25 @@ import java.io.IOException;
 
 public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
-    private final UserRepository userRepository;
-    private final JwtTokenService jwtTokenService;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
-      RefreshTokenRepository refreshTokenRepository;
+    private final UserRepository userRepository;
+    private final JwtTokenService jwtTokenService;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final AccessTokenRepository accessTokenRepository;
+    private final TokenService tokenService;
 
-    @Autowired
-    AccessTokenRepository accessTokenRepository;
-
-    @Autowired
-    TokenService tokenService;
-
-
-    public CustomAuthenticationFilter(UserRepository userRepository, JwtTokenService jwtTokenService) {
+    public CustomAuthenticationFilter(UserRepository userRepository,
+                                      JwtTokenService jwtTokenService,
+                                      RefreshTokenRepository refreshTokenRepository,
+                                      AccessTokenRepository accessTokenRepository,
+                                      TokenService tokenService) {
 
         this.userRepository = userRepository;
         this.jwtTokenService = jwtTokenService;
-
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.accessTokenRepository = accessTokenRepository;
+        this.tokenService = tokenService;
     }
 
 

@@ -1,12 +1,15 @@
 package com.bootcamp.ecommerce.config;
 
-//    import com.bootcamp.ecommerce.service.impl.CustomUserDetailsService;
 import com.bootcamp.ecommerce.CustomAuthenticationFailureHandler;
 import com.bootcamp.ecommerce.JwtAuthenticationEntryPoint;
 import com.bootcamp.ecommerce.filters.CustomAuthenticationFilter;
 import com.bootcamp.ecommerce.filters.JwtAuthenticationFilter;
+import com.bootcamp.ecommerce.repository.AccessTokenRepository;
+import com.bootcamp.ecommerce.repository.RefreshTokenRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.service.JwtTokenService;
+import com.bootcamp.ecommerce.service.TokenService;
+import com.bootcamp.ecommerce.service.impl.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -54,7 +57,6 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .requestMatchers("/api/rabbit/send").permitAll()
-                        .requestMatchers("/api/category/**").permitAll()
                         .anyRequest().authenticated()
                 );
 
@@ -69,9 +71,22 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CustomAuthenticationFilter customAuthenticationFilter(AuthenticationManager authenticationManager, JwtTokenService jwtTokenService, UserRepository userRepository) {
+    public CustomAuthenticationFilter customAuthenticationFilter(
+            AuthenticationManager authenticationManager,
+            JwtTokenService jwtTokenService,
+            UserRepository userRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            AccessTokenRepository accessTokenRepository,
+            TokenService tokenService) {
 
-        CustomAuthenticationFilter filter = new CustomAuthenticationFilter(userRepository, jwtTokenService);
+        CustomAuthenticationFilter filter =
+                new CustomAuthenticationFilter(
+                        userRepository,
+                        jwtTokenService,
+                        refreshTokenRepository,
+                        accessTokenRepository,
+                        tokenService
+                );
 
         filter.setAuthenticationManager(authenticationManager);
         filter.setAuthenticationFailureHandler(customAuthenticationFailureHandler);

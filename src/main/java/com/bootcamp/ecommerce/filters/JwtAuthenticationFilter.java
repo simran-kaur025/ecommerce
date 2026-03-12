@@ -3,6 +3,7 @@ package com.bootcamp.ecommerce.filters;
 import com.bootcamp.ecommerce.entity.AccessToken;
 import com.bootcamp.ecommerce.repository.AccessTokenRepository;
 import com.bootcamp.ecommerce.service.JwtTokenService;
+import com.bootcamp.ecommerce.service.impl.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,11 +26,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final UserDetailsService userDetailsService;
 
+    private final CustomUserDetailsService customUserDetailsService;
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
 
-        if (path.startsWith("/api/auth/login")) {
+        if (path.startsWith("/api/auth")) {
             filterChain.doFilter(request, response);
             return;
         }

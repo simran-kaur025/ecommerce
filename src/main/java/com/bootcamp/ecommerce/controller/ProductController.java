@@ -3,6 +3,7 @@ package com.bootcamp.ecommerce.controller;
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.service.ProductService;
+import com.bootcamp.ecommerce.utils.RequestParamsExtractor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,12 +12,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
 
     private final ProductService productService;
+    private final RequestParamsExtractor extractor;
+
 
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping("/add/products/seller")
@@ -46,14 +51,10 @@ public class ProductController {
 
     @GetMapping("/get/all/products/seller")
     @PreAuthorize("hasRole('SELLER')")
-    public ResponseEntity<ResponseDTO> getAllProducts(
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(required = false) String query) {
+    public ResponseEntity<ResponseDTO> getAllProducts(@RequestParam Map<String,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
 
-        PageResponse<ProductResponse> response = productService.getAllProducts(offset, max, sortBy, order, query);
+        PageResponse<ProductResponse> response = productService.getAllProducts(requestParams);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -62,6 +63,9 @@ public class ProductController {
                         .build()
         );
     }
+
+
+
 
     @PreAuthorize("hasRole('SELLER')")
     @DeleteMapping("/delete/products/seller/{productId}")
@@ -112,15 +116,9 @@ public class ProductController {
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/get/all/products/customer")
-    public ResponseEntity<ResponseDTO> getProducts(
-            @RequestParam Long categoryId,
-            @RequestParam(required = false) String query,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "name") String sort,
-            @RequestParam(defaultValue = "asc") String order
-    ) {
-        PageResponse<ProductDetailResponseDTO> response =  productService.getAllProductsAsCustomer(categoryId, offset, max, sort, order,query);
+    public ResponseEntity<ResponseDTO> getProducts(@RequestParam Long categoryId, @RequestParam Map<String,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
+        PageResponse<ProductDetailResponseDTO> response =  productService.getAllProductsAsCustomer(categoryId, requestParams);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -133,16 +131,11 @@ public class ProductController {
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/get/similar/products/customer")
-    public ResponseEntity<ResponseDTO> viewSimilarProducts(
-            @RequestParam Long productId,
-            @RequestParam(required = false) String query,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "name") String sort,
-            @RequestParam(defaultValue = "asc") String order
-    ) {
+    public ResponseEntity<ResponseDTO> viewSimilarProducts(@RequestParam Long productId, @RequestParam Map<String,String> allParams) {
 
-        ProductListResponseDTO response = productService.getSimilarProducts(productId, query, offset, max, sort, order);
+        RequestParams requestParams = extractor.extract(allParams);
+
+        ProductListResponseDTO response = productService.getSimilarProducts(productId, requestParams);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -169,18 +162,13 @@ public class ProductController {
         );
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/get/all/products/admin")
-    public ResponseEntity<ResponseDTO> viewAllProducts(
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "name") String sort,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) Long sellerId,
-            @RequestParam(required = false) String query
-    ) {
+    public ResponseEntity<ResponseDTO> viewAllProducts(@RequestParam Map<String,String> allParams) {
 
-        ProductListResponseDTO response = productService.viewAllProductsAsAdmin(offset, max, sort, order, categoryId, sellerId, query);
+        RequestParams requestParams = extractor.extract(allParams);
+
+        PageResponse<ProductDetailResponseDTO> response= productService.viewAllProductsAsAdmin(requestParams);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()

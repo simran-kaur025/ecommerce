@@ -1,13 +1,16 @@
 package com.bootcamp.ecommerce.DTO;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.util.List;
 import java.util.Map;
 
 @Data
 @Builder
+@Getter
+@Setter
+@RequiredArgsConstructor
+@AllArgsConstructor
 public class ProductVariationResponse {
 
     private Long id;

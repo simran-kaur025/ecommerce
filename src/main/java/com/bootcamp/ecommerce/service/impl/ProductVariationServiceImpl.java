@@ -1,9 +1,6 @@
 package com.bootcamp.ecommerce.service.impl;
 
-import com.bootcamp.ecommerce.DTO.ProductSummary;
-import com.bootcamp.ecommerce.DTO.ProductVariationRequestDTO;
-import com.bootcamp.ecommerce.DTO.ProductVariationResponse;
-import com.bootcamp.ecommerce.DTO.ProductVariationUpdateDTO;
+import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.CategoryMetadataFieldValue;
 import com.bootcamp.ecommerce.entity.Product;
 import com.bootcamp.ecommerce.entity.ProductVariation;
@@ -12,12 +9,14 @@ import com.bootcamp.ecommerce.repository.CategoryMetadataFieldValueRepository;
 import com.bootcamp.ecommerce.repository.ProductRepository;
 import com.bootcamp.ecommerce.repository.ProductVariationRepository;
 import com.bootcamp.ecommerce.service.ProductVariationService;
+import com.bootcamp.ecommerce.specifications.ProductVariationSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -118,8 +117,7 @@ public class ProductVariationServiceImpl implements ProductVariationService {
                     .collect(Collectors.toSet());
 
             if (!expectedKeys.equals(incomingKeys)) {
-                throw new IllegalArgumentException(
-                        "All variations must have same metadata structure");
+                throw new IllegalArgumentException("All variations must have same metadata structure");
             }
         }
 
@@ -190,7 +188,10 @@ public class ProductVariationServiceImpl implements ProductVariationService {
 
 
     @Transactional(readOnly = true)
-    public Page<ProductVariationResponse> getAllProductVariations(Long productId, int offset, int max, String sortBy, String order, String query) {
+    public PageResponse<ProductVariationResponse> getAllProductVariations(Long productId, RequestParams params) {
+
+        Map<String, String> filters = new HashMap<>(params.getFilters());
+
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
@@ -205,34 +206,34 @@ public class ProductVariationServiceImpl implements ProductVariationService {
             throw new AccessDeniedException("You are not authorized to view these variations");
         }
 
-        Sort.Direction direction = Sort.Direction.fromOptionalString(order).orElse(Sort.Direction.ASC);
+        Specification<ProductVariation> specification = ProductVariationSpecifications.extract(product,filters);
 
-        Pageable pageable = PageRequest.of(offset / max, max, Sort.by(direction, sortBy));
+        Sort.Direction direction = Sort.Direction
+                .fromOptionalString(params.getOrder())
+                .orElse(Sort.Direction.ASC);
 
-        Page<ProductVariation> variationPage;
+        Sort sort = Sort.by(direction, params.getSortBy());
 
-        if (query != null && !query.isBlank()) {
-            variationPage = productVariationRepository.findByProduct_IdAndMetadataContainingIgnoreCase(productId, query, pageable);
-        } else {
-            variationPage = productVariationRepository.findByProduct_Id(productId, pageable);
-        }
+        int pageNumber = params.getOffset() / params.getMax();
 
-        return variationPage.map(this::mapToProductVariationResponse);
+        Pageable pageable = PageRequest.of(pageNumber, params.getMax(), sort);
+
+        Page<ProductVariation> variationPage = productVariationRepository.findAll(specification, pageable);
+
+        List<ProductVariationResponse> responses =
+                variationPage.getContent()
+                        .stream()
+                        .map(this::mapToProductVariationResponse)
+                        .toList();
+
+        return new PageResponse<>(
+                responses,
+                variationPage.getTotalElements(),
+                variationPage.getNumber(),
+                variationPage.getSize(),
+                variationPage.getTotalPages()
+        );
     }
-//
-//    private ProductVariationResponse mapToVariationResponse(
-//            ProductVariation variation) {
-//
-//        return ProductVariationResponse.builder()
-//                .id(variation.getId())
-//                .price(variation.getPrice())
-//                .quantityAvailable(variation.getQuantity_available())
-//                .active(variation.getIsActive())
-//                .metadata(variation.getMetadata())
-//                .product(variation.getProduct())
-//                .build();
-//    }
-
 
     @Transactional
     @Override

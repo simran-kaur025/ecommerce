@@ -44,7 +44,7 @@ public class User extends Auditable {
     @Column(name = "password_update_date")
     private LocalDateTime passwordUpdateDate;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER)
     private List<UserRole> userRoles;
 
 }

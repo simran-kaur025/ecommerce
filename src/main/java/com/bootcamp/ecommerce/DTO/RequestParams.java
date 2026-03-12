@@ -5,9 +5,9 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Collections;
 import java.util.Map;
 
-@RequiredArgsConstructor
 @Getter
 public class RequestParams {
 
@@ -26,6 +26,19 @@ public class RequestParams {
     @Pattern(regexp = "^(asc|desc)$",
             message = "Order must be asc or desc")
     private final String order;
+
+    public RequestParams(Map<String, String> filters,
+                         Integer max,
+                         Integer offset,
+                         String sortBy,
+                         String order) {
+
+        this.filters = (filters != null) ? filters : Collections.emptyMap();
+        this.max = (max != null) ? max : 10;
+        this.offset = (offset != null) ? offset : 0;
+        this.sortBy = (sortBy != null) ? sortBy : "id";
+        this.order = (order != null) ? order : "asc";
+    }
 
     public String cacheKey() {
         return offset + "_" + max + "_" + sortBy + "_" + order + "_" + filters;

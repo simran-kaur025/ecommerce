@@ -6,6 +6,8 @@ import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.ProductService;
+import com.bootcamp.ecommerce.specifications.ProductSpecifications;
+import com.bootcamp.ecommerce.specifications.ProductVariationSpecifications;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -15,15 +17,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.bootcamp.ecommerce.constant.Constant.ADMIN_EMAIL;
 import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_APPROVAL_SUBJECT;
@@ -45,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
     @CacheEvict(value = {"productList"}, allEntries = true)
     @Override
     public void addProduct(ProductRequestDTO request) {
+
         String email= SecurityContextHolder.getContext().getAuthentication().getName();
 
         Seller seller = sellerRepository.findByUserEmail(email).orElseThrow(() -> new ResourceNotFoundException("Seller not Found"));
@@ -147,36 +148,49 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
-    @Cacheable(
-            value = "productsList",
-            key = "#offset + '_' + #max + '_' + #sortBy + '_' + #order + '_' + #query + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
-    )
-    @Transactional(readOnly = true)
+
+    @Cacheable(value = "productsList", key = "#requestParams.cacheKey()")
     @Override
-    public PageResponse<ProductResponse> getAllProducts(int offset, int max, String sortBy, String order, String query) {
+    @Transactional(readOnly = true)
+    public PageResponse<ProductResponse> getAllProducts(RequestParams requestParams) {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        Sort.Direction direction = Sort.Direction.fromOptionalString(order).orElse(Sort.Direction.ASC);
-
-        Pageable pageable = PageRequest.of(offset / max, max, Sort.by(direction, sortBy));
-
-        Page<Product> productPage;
-
-        if (query != null && !query.isBlank()) {
-            productPage = productRepository.findBySeller_User_EmailAndIsDeletedFalseAndNameContainingIgnoreCase(email, query, pageable);
-        } else {
-            productPage = productRepository.findBySeller_User_EmailAndIsDeletedFalse(email, pageable);
+        if (requestParams.getOffset() < 0) {
+            throw new IllegalArgumentException("Offset cannot be negative");
         }
 
-        PageResponse<ProductResponse> pageResponse = new PageResponse<>();
-        pageResponse.setContent(productPage.map(this::mapToProductResponse).getContent());
-        pageResponse.setTotalElements(productPage.getTotalElements());
-        pageResponse.setTotalPages(productPage.getTotalPages());
-        pageResponse.setNumber(productPage.getNumber());
-        pageResponse.setSize(productPage.getSize());
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
 
-        return pageResponse;
+        Map<String, String> filters = new HashMap<>(requestParams.getFilters());
+        filters.put("sellerEmail", email);
+
+        Specification<Product> specification = ProductSpecifications.extract(filters);
+
+        Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder())
+                .orElse(Sort.Direction.ASC);
+
+        Sort sort = Sort.by(direction, requestParams.getSortBy());
+
+        int pageNumber = requestParams.getOffset() / requestParams.getMax();
+
+        Pageable pageable = PageRequest.of(pageNumber, requestParams.getMax(), sort);
+
+        Page<Product> productPage = productRepository.findAll(specification, pageable);
+
+        List<ProductResponse> products = productPage
+                .getContent()
+                .stream()
+                .map(this::mapToProductResponse)
+                .toList();
+
+        return new PageResponse<>(
+                products,
+                productPage.getTotalElements(),
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalPages()
+        );
     }
 
 
@@ -184,7 +198,8 @@ public class ProductServiceImpl implements ProductService {
             @CacheEvict(value = "products", key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"),
             @CacheEvict(value = "productsList", allEntries = true),
             @CacheEvict(value = "products", key = "#productId"),
-            @CacheEvict(value = "publicProductDetail", allEntries = true)
+            @CacheEvict(value = "publicProductDetail", allEntries = true),
+            @CacheEvict(value = "publicProductList", allEntries = true)
     })
     @Transactional
     @Override
@@ -212,7 +227,8 @@ public class ProductServiceImpl implements ProductService {
             @CacheEvict(value = "products", key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"),
             @CacheEvict(value = "productsList", allEntries = true),
             @CacheEvict(value = "products", key = "#productId"),
-            @CacheEvict(value = "publicProductDetail", allEntries = true)
+            @CacheEvict(value = "publicProductDetail", allEntries = true),
+            @CacheEvict(value = "publicProductList", allEntries = true)
     })
     @Transactional
     @Override
@@ -289,52 +305,48 @@ public class ProductServiceImpl implements ProductService {
 
     @Cacheable(
             value = "publicProductList",
-            key = "#categoryId + '_' + #offset + '_' + #max + '_' + #sort + '_' + #order + '_' + #query"
+            key = "#categoryId + '_' + #requestParams.cacheKey()"
     )
     @Transactional(readOnly = true)
     @Override
-    public PageResponse<ProductDetailResponseDTO> getAllProductsAsCustomer(
-            Long categoryId,
-            int offset,
-            int max,
-            String sort,
-            String order,
-            String query) {
+    public PageResponse<ProductDetailResponseDTO> getAllProductsAsCustomer(Long categoryId, RequestParams requestParams) {
 
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
 
         List<Long> leafCategoryIds = getLeafCategoryIds(category.getId());
 
-        Sort.Direction direction =
-                order.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
-        Pageable pageable = PageRequest.of(offset, max, Sort.by(direction, sort));
+        filters.put("categoryIds", leafCategoryIds.toString());
 
-        Page<Product> page = productRepository.searchProductsWithCategory(leafCategoryIds, query, pageable);
+        Specification<Product> specification = ProductSpecifications.extract(filters);
 
-        List<ProductDetailResponseDTO> products =
-                page.getContent()
-                        .stream()
-                        .map(product -> {
+        Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder()).orElse(Sort.Direction.ASC);
 
-                            List<ProductVariation> variations =
-                                    productVariationRepository.findByProduct(product);
+        int pageNumber = requestParams.getOffset() / requestParams.getMax();
 
-                            return mapToProductDetailResponse(product, variations);
-                        })
-                        .toList();
+        Pageable pageable = PageRequest.of(pageNumber, requestParams.getMax(), Sort.by(direction, requestParams.getSortBy()));
 
-        return new PageResponse<ProductDetailResponseDTO>(
+        Page<Product> productPage = productRepository.findAll(specification, pageable);
+        List<ProductDetailResponseDTO> products = productPage.getContent()
+                .stream()
+                .map(p -> {
+                    Specification<ProductVariation> variationSpec = ProductVariationSpecifications.extract(p, requestParams.getFilters());
+
+                    List<ProductVariation> variations = productVariationRepository.findAll(variationSpec);
+
+                    return mapToProductDetailResponse(p, variations);
+                })
+                .toList();
+
+        return new PageResponse<>(
                 products,
-                page.getTotalElements(),
-                page.getTotalPages(),
-                page.getNumber(),
-                page.getSize()
+                productPage.getTotalElements(),
+                productPage.getNumber(),
+                productPage.getSize(),
+                productPage.getTotalPages()
         );
     }
-
-
 
     private List<Long> getLeafCategoryIds(Long categoryId) {
 
@@ -385,37 +397,40 @@ public class ProductServiceImpl implements ProductService {
                 .id(variation.getId())
                 .price(variation.getPrice())
                 .quantityAvailable(variation.getQuantity_available())
-//                .primaryImage(variation.getPrimaryImageName())
-//                .secondaryImages(variation.getSecondaryImages())
                 .metadata(variation.getMetadata())
                 .build();
     }
 
     @Transactional(readOnly = true)
     @Override
-    public ProductListResponseDTO getSimilarProducts(
-            Long productId,
-            String query,
-            int offset,
-            int max,
-            String sort,
-            String order) {
+    public ProductListResponseDTO getSimilarProducts(Long productId, RequestParams params) {
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+        Product product = productRepository.findById(productId).orElseThrow(() -> new RuntimeException("Product not found"));
 
-        Sort.Direction direction =
-                order.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Map<String, String> filters = new HashMap<>();
 
-        Pageable pageable = PageRequest.of(offset, max, Sort.by(direction, sort));
+        filters.put("categoryId", product.getCategory().getId().toString());
 
-        Page<Product> page = productRepository.findSimilarProducts(product.getCategory().getId(), product.getId(), query, pageable
-        );
+        Specification<Product> specification = ProductSpecifications.extract(filters)
+                        .and((root, query, cb) ->
+                                cb.notEqual(root.get("id"), productId));
 
-        List<ProductDetailResponseDTO> products =
-                page.getContent()
+        Sort.Direction direction = Sort.Direction.fromOptionalString(params.getOrder()).orElse(Sort.Direction.ASC);
+
+        int pageNumber = params.getOffset() / params.getMax();
+
+        Pageable pageable = PageRequest.of(pageNumber, params.getMax(), Sort.by(direction, params.getSortBy()));
+
+        Page<Product> page = productRepository.findAll(specification, pageable);
+
+        List<ProductDetailResponseDTO> products = page.getContent()
                         .stream()
-                        .map(p -> mapToProductDetailResponse(p, productVariationRepository.findByProduct(p)))
+                        .map(p -> {
+                                Specification<ProductVariation> variationSpec = ProductVariationSpecifications.extract(p, params.getFilters());
+                                List<ProductVariation> variations = productVariationRepository.findAll(variationSpec);
+                                return mapToProductDetailResponse(p, variations);
+
+                        })
                         .toList();
 
         return ProductListResponseDTO.builder()
@@ -427,70 +442,64 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
-
-
-
     @Transactional(readOnly = true)
     @Override
     public ProductDetailResponseDTO viewProductAsAdmin(Long productId) {
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        log.info("Product found: {}", product.getName());
 
         List<ProductVariation> variations = productVariationRepository.findByProduct(product);
-
+        log.info("Total variations found for productId {} : {}", productId, variations.size());
         return mapToProductDetailResponse(product, variations);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public ProductListResponseDTO viewAllProductsAsAdmin(
-            int offset,
-            int max,
-            String sort,
-            String order,
-            Long categoryId,
-            Long sellerId,
-            String query
-    ) {
+    public PageResponse<ProductDetailResponseDTO> viewAllProductsAsAdmin(RequestParams requestParams) {
 
-        Sort.Direction direction = order.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
-        Pageable pageable = PageRequest.of(offset, max, Sort.by(direction, sort));
+        Specification<Product> specification = ProductSpecifications.extract(filters);
 
-        Page<Product> productPage = productRepository.searchProducts(categoryId, sellerId, query, pageable);
+        Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder())
+                        .orElse(Sort.Direction.ASC);
+
+        int pageNumber = requestParams.getOffset() / requestParams.getMax();
+
+        Pageable pageable = PageRequest.of(pageNumber, requestParams.getMax(), Sort.by(direction, requestParams.getSortBy()));
+
+        Page<Product> productPage = productRepository.findAll(specification, pageable);
+        log.info("Total products found: {}", productPage.getTotalElements());
 
         List<ProductDetailResponseDTO> products = productPage.getContent()
-                .stream()
-                .map(product -> {
+                        .stream()
+                        .map(product -> {
 
-                    List<ProductVariation> variations = productVariationRepository.findByProduct(product);
+                            Specification<ProductVariation> variationSpec = ProductVariationSpecifications.extract(product, requestParams.getFilters());
 
-                    return mapToProductDetailResponse(product, variations);
-                })
-                .toList();
+                            List<ProductVariation> variations = productVariationRepository.findAll(variationSpec);
+                            log.debug("Total variations found for productId {} : {}", product.getId(), variations.size());
+                            return mapToProductDetailResponse(product, variations);
+                        })
+                        .toList();
+        log.info("Returning {} products for admin request", products.size());
 
-        return ProductListResponseDTO.builder()
-                .products(products)
-                .page(productPage.getNumber())
-                .size(productPage.getSize())
-                .totalElements(productPage.getTotalElements())
-                .totalPages(productPage.getTotalPages())
-                .build();
+        return new PageResponse<>(
+                products,
+                productPage.getTotalElements(),
+                productPage.getTotalPages(),
+                productPage.getNumber(),
+                productPage.getSize()
+        );
     }
-
-
-
-
 
 
     @Transactional
     @Override
     public void deactivateProduct(Long productId) {
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Product not found"));
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (!Boolean.TRUE.equals(product.getIsActive())) {
             throw new IllegalArgumentException("Product already inactive");

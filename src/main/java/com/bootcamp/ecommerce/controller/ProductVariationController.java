@@ -1,11 +1,9 @@
 package com.bootcamp.ecommerce.controller;
 
-import com.bootcamp.ecommerce.DTO.ProductVariationRequestDTO;
-import com.bootcamp.ecommerce.DTO.ProductVariationResponse;
-import com.bootcamp.ecommerce.DTO.ProductVariationUpdateDTO;
-import com.bootcamp.ecommerce.DTO.ResponseDTO;
+import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.service.ProductVariationService;
+import com.bootcamp.ecommerce.utils.RequestParamsExtractor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/product-variations")
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProductVariationController {
 
     private final ProductVariationService productVariationService;
+    private final RequestParamsExtractor extractor;
 
     @PreAuthorize("hasRole('SELLER')")
     @PostMapping("/add/product-variations/{productId}")
@@ -52,14 +53,9 @@ public class ProductVariationController {
 
     @PreAuthorize("hasRole('SELLER')")
     @GetMapping("/get/all/products-variations/{productId}")
-    public ResponseEntity<ResponseDTO> getProductVariations(@PathVariable Long productId,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "10") int max,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String order,
-            @RequestParam(required = false) String query) {
-
-        Page<ProductVariationResponse> response = productVariationService.getAllProductVariations(productId, offset, max, sortBy, order, query);
+    public ResponseEntity<ResponseDTO> getProductVariations(@PathVariable Long productId, @Valid @RequestParam Map<String,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
+        PageResponse<ProductVariationResponse> response = productVariationService.getAllProductVariations(productId,requestParams);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
