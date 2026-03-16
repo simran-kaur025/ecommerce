@@ -40,8 +40,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         User user = userDetails.getUser();
 
         Customer customer = customerRepository.findByUser(user)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
 
         return CustomerProfileResponseDTO.builder()
@@ -58,26 +57,22 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
     @Override
     public ResponseDTO getMyAddress() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         List<AddressDTO> addresses = addressRepository.findByUser(user)
-                        .stream()
-                        .map(address -> AddressDTO.builder()
-                                .city(address.getCity())
-                                .state(address.getState())
-                                .country(address.getCountry())
-                                .addressLine(address.getAddressLine())
-                                .label(address.getLabel())
-                                .zipCode(address.getZipCode())
-                                .build())
-                        .toList();
+                .stream()
+                .map(address -> AddressDTO.builder()
+                        .city(address.getCity())
+                        .state(address.getState())
+                        .country(address.getCountry())
+                        .addressLine(address.getAddressLine())
+                        .zipCode(address.getZipCode())
+                        .label(address.getLabel())
+                        .build())
+                .toList();
 
         if (addresses.isEmpty()) {
         throw new ResourceNotFoundException("No address found for this user");
@@ -90,7 +85,6 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
     }
 
     public void updateProfile(UpdateProfileRequestDTO request) {
-
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -114,7 +108,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         }
 
         if (request.getMiddleName() != null) {
-            user.setMiddleName(request.getFirstName());
+            user.setMiddleName(request.getMiddleName());
         }
 
         if (request.getLastName() != null) {
@@ -190,9 +184,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
 
         log.info("Delete address request received for addressId={}", addressId);
 
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
@@ -203,14 +195,12 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         Address address = addressRepository
                 .findByIdAndUser(addressId, user)
                 .orElseThrow(() -> {
-                    log.error("Address not found. addressId={}, userId={}",
-                            addressId, user.getId());
-                    return new ResourceNotFoundException("Address not found");
+                    log.error("Address not found. addressId={}, userId={}", addressId, user.getId());
+                    return new ResourceNotFoundException("Address does not found or does not belong to current user");
                 });
 
         addressRepository.delete(address);
-        log.info("Address deleted successfully. addressId={}, userId={}",
-                addressId, user.getId());
+        log.info("Address deleted successfully. addressId={}, userId={}", addressId, user.getId());
     }
 
 

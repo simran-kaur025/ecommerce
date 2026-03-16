@@ -6,6 +6,7 @@ import com.bootcamp.ecommerce.entity.Cart;
 import com.bootcamp.ecommerce.entity.CartId;
 import com.bootcamp.ecommerce.entity.ProductVariation;
 import com.bootcamp.ecommerce.entity.User;
+import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.CartRepository;
 import com.bootcamp.ecommerce.repository.ProductVariationRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
@@ -77,7 +78,7 @@ public class CartServiceImpl implements CartService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         List<Cart> cartItems = cartRepository.findByCustomerAndIsWishlistItemFalse(user);
 
@@ -86,8 +87,7 @@ public class CartServiceImpl implements CartService {
 
                     ProductVariation variation = cart.getProductVariation();
 
-                    boolean outOfStock =
-                            variation.getQuantity_available() < cart.getQuantity();
+                    boolean outOfStock = variation.getQuantity_available() < cart.getQuantity();
 
                     return new CartResponseDTO(
                             variation.getId(),
@@ -109,13 +109,13 @@ public class CartServiceImpl implements CartService {
                 .getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         ProductVariation variation = variationRepository.findById(productVariationId)
-                .orElseThrow(() -> new RuntimeException("Invalid product variation"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid product variation"));
 
         Cart cart = cartRepository.findByCustomerAndProductVariationAndIsWishlistItemFalse(user, variation)
-                .orElseThrow(() -> new RuntimeException("Product not found in cart"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found in cart"));
 
         cartRepository.delete(cart);
     }
@@ -128,10 +128,10 @@ public class CartServiceImpl implements CartService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         ProductVariation variation = variationRepository.findById(request.getProductVariationId())
-                .orElseThrow(() -> new RuntimeException("Invalid product variation"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid product variation"));
 
         if (!variation.getIsActive())
             throw new RuntimeException("Variation not active");
@@ -140,7 +140,7 @@ public class CartServiceImpl implements CartService {
             throw new RuntimeException("Product deleted");
 
         Cart cart = cartRepository.findByCustomerAndProductVariationAndIsWishlistItemFalse(user, variation)
-                .orElseThrow(() -> new RuntimeException("Product not in cart"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not in cart"));
 
         if (request.getQuantity() == 0) {
             cartRepository.delete(cart);
@@ -148,7 +148,7 @@ public class CartServiceImpl implements CartService {
         }
 
         if (variation.getQuantity_available() < request.getQuantity())
-            throw new RuntimeException("Insufficient stock");
+            throw new ResourceNotFoundException("Insufficient stock");
 
         cart.setQuantity(request.getQuantity());
         cartRepository.save(cart);
@@ -160,14 +160,12 @@ public class CartServiceImpl implements CartService {
     @Override
     public void emptyCart() {
 
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication().getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Cart> cartItems =
-                cartRepository.findByCustomerAndIsWishlistItemFalse(user);
+        List<Cart> cartItems = cartRepository.findByCustomerAndIsWishlistItemFalse(user);
 
         cartRepository.deleteAll(cartItems);
     }

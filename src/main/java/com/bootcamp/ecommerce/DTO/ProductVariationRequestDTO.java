@@ -15,9 +15,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductVariationRequestDTO {
-//
-//    @NotNull(message = "Product Id is mandatory")
-//    private Long productId;
+
 
     @NotNull(message = "Quantity is required")
     @Min(value = 0, message = "Quantity must be 0 or more")
@@ -27,10 +25,6 @@ public class ProductVariationRequestDTO {
     @Min(value = 0, message = "Price must be 0 or more")
     private Double price;
 
-    @NotBlank
-    private String primaryImageName;
-
-    private List<String> secondaryImages;
 
     @NotEmpty(message = "metadata is required")
     private Map<String, List<String>> metadata;

@@ -25,13 +25,7 @@ public class ProductVariation extends Auditable{
 
     private Double price;
 
-    private String primaryImageName;
-
     private Boolean isActive = true;
-
-    private List<String> secondaryImages;
-
-
 
     @Type(JsonType.class)
     @Column(columnDefinition = "json")

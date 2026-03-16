@@ -53,7 +53,7 @@ public class OrderSpecifications {
             }
 
             // STATUS FILTER
-            if (filters.containsKey("status")) {
+                if (filters.containsKey("status")) {
                 try {
                     OrderState status = OrderState.valueOf(filters.get("status").toUpperCase());
                     Join<Order, OrderProduct> orderProductJoin = root.join("orderProducts", JoinType.INNER);

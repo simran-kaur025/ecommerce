@@ -9,12 +9,14 @@ import org.springframework.cglib.core.Local;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Locale;
 import java.util.Map;
 
-@RequestMapping("/api/order")
+@RequestMapping("/order")
 @RestController
 @RequiredArgsConstructor
 public class OrderController {
@@ -78,7 +80,6 @@ public class OrderController {
 
 
 
-/* Seller Order Api */
     @PreAuthorize("hasRole('SELLER')")
     @GetMapping("/seller/view/all/orders")
     public ResponseEntity<Page<OrderResponseDTO>> listOrdersOfMyProducts(@RequestParam Map<String ,String> allParams) {
@@ -91,7 +92,6 @@ public class OrderController {
 
 
 
-    // Admin Order Api
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/get/all/orders")
     public ResponseEntity<Page<OrderResponseDTO>>  getAllOrders(@RequestParam Map<String ,String> allParams) {
@@ -99,4 +99,21 @@ public class OrderController {
         Page<OrderResponseDTO> response = orderService.getAllOrdersAsAdmin(requestParams);
         return ResponseEntity.ok(response);
     }
+
+
+    @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
+    @PatchMapping("/change/status")
+    public ResponseEntity<ResponseDTO> updateOrderStatus(@RequestBody UpdateOrderStatusRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        orderService.updateOrderStatus(request,userDetails);
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status("SUCCESS")
+                        .message("Order status updated successfully")
+                        .build()
+        );
+    }
 }
+
+

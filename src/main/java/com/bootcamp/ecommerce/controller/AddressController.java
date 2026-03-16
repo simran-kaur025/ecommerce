@@ -11,18 +11,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/address")
+@RequestMapping("/address")
 @RequiredArgsConstructor
-/*
 
-*/
 public class AddressController {
 
     private final AddressService addressService;
 
-
     @PreAuthorize("isAuthenticated()")
-    @PatchMapping("/update-addresses/{addressId}")
+    @PatchMapping("/{addressId}")
     public ResponseEntity<ResponseDTO> patchAddress(@PathVariable Long addressId, @RequestBody UpdateAddressRequestDTO request) {
         addressService.updateAddress(addressId, request);
 

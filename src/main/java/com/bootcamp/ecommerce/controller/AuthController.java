@@ -18,19 +18,12 @@ import java.util.Locale;
 import static org.springframework.http.HttpStatus.OK;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
 
     private final AuthService authService;
-
-//    @PostMapping("/login")
-//    public ResponseDTO login(@RequestBody @Valid LoginRequestDTO requestDTO) {
-//        return authService.login(requestDTO);
-//    }
-
-
 
     @PostMapping("/logout")
     public ResponseEntity<ResponseDTO> logout(HttpServletRequest request) {

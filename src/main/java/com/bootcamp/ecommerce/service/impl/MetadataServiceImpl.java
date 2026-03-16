@@ -27,7 +27,8 @@ import java.util.List;
 public class MetadataServiceImpl implements MetadataService {
     private final CategoryMetadataFieldRepository categoryMetadataFieldRepository;
 
-    @CacheEvict(value = "metadataFields", allEntries = true)    @Override
+    @CacheEvict(value = "metadataFields", allEntries = true)
+    @Override
     public CategoryMetadataField createMetadataField(CategoryMetadataFieldRequest request) {
 
         if (categoryMetadataFieldRepository.existsByNameIgnoreCase(request.getName())) {

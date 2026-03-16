@@ -4,12 +4,12 @@ import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.*;
 import com.bootcamp.ecommerce.enums.OrderState;
 import com.bootcamp.ecommerce.enums.PaymentMethod;
+import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.OrderService;
 import com.bootcamp.ecommerce.specifications.OrderSpecifications;
 import lombok.RequiredArgsConstructor;
-import org.aspectj.weaver.ast.Or;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,17 +17,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.bootcamp.ecommerce.enums.OrderState.ORDER_PLACED;
-import static com.bootcamp.ecommerce.enums.OrderState.RETURN_REQUESTED;
-import static com.bootcamp.ecommerce.enums.PaymentMethod.COD;
+
 
 
 @Service
@@ -523,6 +521,54 @@ public class OrderServiceImpl implements OrderService {
         for (Map.Entry<Seller, List<OrderProduct>> entry : itemsBySeller.entrySet()) {
             emailService.sendPendingOrdersReminder(entry.getKey(), entry.getValue());
         }
+    }
+
+
+    @Transactional
+    @Override
+    public void updateOrderStatus(UpdateOrderStatusRequest request, UserDetails userDetails) {
+
+        OrderProduct orderProduct = orderProductRepository
+                .findById(request.getOrderProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        String role = userDetails.getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        if (role.equals("ROLE_SELLER")) {
+
+            String sellerEmail = userDetails.getUsername();
+
+            String productSeller = orderProduct.getProductVariation()
+                    .getProduct()
+                    .getCreatedBy();
+
+            if (!sellerEmail.equals(productSeller)) {
+                throw new RuntimeException("Seller cannot update this order");
+            }
+        }
+
+        OrderState currentStatus = orderProduct.getCurrentStatus();
+        OrderState nextStatus = request.getToStatus();
+
+        if (!OrderState.isValidTransition(currentStatus, nextStatus)) {
+            throw new RuntimeException("Invalid status transition");
+        }
+
+
+        OrderStatus history = new OrderStatus();
+
+        history.setOrderProduct(orderProduct);
+        history.setFromStatus(currentStatus);
+        history.setToStatus(nextStatus);
+
+        orderStatusRepository.save(history);
+
+        orderProduct.setCurrentStatus(nextStatus);
+
+        orderProductRepository.save(orderProduct);
     }
 
 }

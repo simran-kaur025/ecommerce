@@ -3,7 +3,6 @@ package com.bootcamp.ecommerce.service.impl;
 import com.bootcamp.ecommerce.CustomUserDetails;
 import com.bootcamp.ecommerce.entity.User;
 import com.bootcamp.ecommerce.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

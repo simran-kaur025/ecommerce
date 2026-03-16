@@ -10,12 +10,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/product")
 @RequiredArgsConstructor
 public class ProductController {
 
@@ -24,7 +26,7 @@ public class ProductController {
 
 
     @PreAuthorize("hasRole('SELLER')")
-    @PostMapping("/add/products/seller")
+    @PostMapping
     public ResponseEntity<ResponseDTO> addProduct(@Valid @RequestBody ProductRequestDTO request) {
 
         productService.addProduct(request);
@@ -34,41 +36,9 @@ public class ProductController {
     }
 
 
-    @PreAuthorize("hasRole('SELLER')")
-    @GetMapping("/get/product/seller/{productId}")
-    public ResponseEntity<ResponseDTO> getProduct(@PathVariable Long productId) {
-
-        ProductResponse response = productService.getProduct(productId);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .data(response)
-                        .build()
-        );
-
-    }
-
-    @GetMapping("/get/all/products/seller")
-    @PreAuthorize("hasRole('SELLER')")
-    public ResponseEntity<ResponseDTO> getAllProducts(@RequestParam Map<String,String> allParams) {
-        RequestParams requestParams = extractor.extract(allParams);
-
-        PageResponse<ProductResponse> response = productService.getAllProducts(requestParams);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .data(response)
-                        .build()
-        );
-    }
-
-
-
 
     @PreAuthorize("hasRole('SELLER')")
-    @DeleteMapping("/delete/products/seller/{productId}")
+    @DeleteMapping("/{productId}")
     public ResponseEntity<ResponseDTO> deleteProduct(@PathVariable Long productId) {
 
         productService.deleteProduct(productId);
@@ -83,7 +53,7 @@ public class ProductController {
 
 
     @PreAuthorize("hasRole('SELLER')")
-    @PutMapping("/update/products/seller/{productId}")
+    @PutMapping("/{productId}")
     public ResponseEntity<ResponseDTO> updateProduct(@PathVariable Long productId, @Valid @RequestBody UpdateProductRequest request) {
 
         productService.updateProduct(productId, request);
@@ -97,40 +67,9 @@ public class ProductController {
     }
 
 
-    @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/get/products/customer/{id}")
-    public ResponseEntity<ResponseDTO> viewProduct(@PathVariable Long id) {
-
-        ProductDetailResponseDTO response = productService.viewProductAsCustomer(id);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status("SUCCESS")
-                        .message("Product fetched successfully")
-                        .data(response)
-                        .build()
-        );
-    }
-
-
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/get/all/products/customer")
-    public ResponseEntity<ResponseDTO> getProducts(@RequestParam Long categoryId, @RequestParam Map<String,String> allParams) {
-        RequestParams requestParams = extractor.extract(allParams);
-        PageResponse<ProductDetailResponseDTO> response =  productService.getAllProductsAsCustomer(categoryId, requestParams);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status("SUCCESS")
-                        .message("Product fetched successfully")
-                        .data(response)
-                        .build()
-        );
-    }
-
-    @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/get/similar/products/customer")
+    @GetMapping("/similar")
     public ResponseEntity<ResponseDTO> viewSimilarProducts(@RequestParam Long productId, @RequestParam Map<String,String> allParams) {
 
         RequestParams requestParams = extractor.extract(allParams);
@@ -148,40 +87,7 @@ public class ProductController {
 
 
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/get/products/admin/{id}")
-    public ResponseEntity<ResponseDTO> viewProductAdmin(@PathVariable Long id) {
-
-        ProductDetailResponseDTO response = productService.viewProductAsAdmin(id);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .message("Product fetched successfully")
-                        .data(response)
-                        .build()
-        );
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/get/all/products/admin")
-    public ResponseEntity<ResponseDTO> viewAllProducts(@RequestParam Map<String,String> allParams) {
-
-        RequestParams requestParams = extractor.extract(allParams);
-
-        PageResponse<ProductDetailResponseDTO> response= productService.viewAllProductsAsAdmin(requestParams);
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .message("Product fetched successfully")
-                        .data(response)
-                        .build()
-        );
-    }
-
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/products/deactivate/{id}")
+    @PutMapping("/deactivate/{id}")
     public ResponseEntity<ResponseDTO> deactivateProduct(@PathVariable Long id) {
         productService.deactivateProduct(id);
 
@@ -196,7 +102,7 @@ public class ProductController {
 
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/products/activate/{id}")
+    @PutMapping("/activate/{id}")
     public ResponseEntity<ResponseDTO> activateProduct(@PathVariable Long id) {
 
         productService.activateProduct(id);
@@ -211,8 +117,99 @@ public class ProductController {
     }
 
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ResponseDTO> getProduct(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String role = userDetails.getAuthorities().stream()
+                .findFirst()
+                .map(Object::toString)
+                .orElse("");
+
+        Object response;
+
+        switch (role) {
+
+            case "ROLE_ADMIN":
+                response = productService.viewProductAsAdmin(id);
+                break;
+
+            case "ROLE_SELLER":
+                response = productService.getProduct(id);
+                break;
+
+            case "ROLE_CUSTOMER":
+                response = productService.viewProductAsCustomer(id);
+                break;
+
+            default:
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ResponseDTO.builder()
+                                .status("FAIL")
+                                .message("Unauthorized role")
+                                .build());
+        }
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .data(response)
+                        .build()
+        );
+    }
 
 
+    @GetMapping
+    public ResponseEntity<ResponseDTO> getProducts(@RequestParam(required = false) Map<String, String> allParams, @RequestParam(required = false) Long categoryId, @AuthenticationPrincipal UserDetails userDetails) {
 
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ResponseDTO.builder()
+                            .status("FAIL")
+                            .message("Authentication required")
+                            .build());
+        }
+
+        String role = userDetails.getAuthorities().stream()
+                .findFirst()
+                .map(Object::toString)
+                .orElse("");
+
+        Object response;
+
+        switch (role) {
+
+            case "ROLE_ADMIN":
+                RequestParams adminParams = extractor.extract(allParams != null ? allParams : Map.of());
+                response = productService.viewAllProductsAsAdmin(adminParams);
+                break;
+
+            case "ROLE_SELLER":
+                RequestParams sellerParams = extractor.extract(allParams != null ? allParams : Map.of());
+                response = productService.getAllProducts(sellerParams);
+                break;
+
+            case "ROLE_CUSTOMER":
+                RequestParams customerParams = extractor.extract(allParams != null ? allParams : Map.of());
+                response = productService.getAllProductsAsCustomer(categoryId, customerParams);
+                break;
+
+            default:
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ResponseDTO.builder()
+                                .status("FAIL")
+                                .message("Unauthorized role")
+                                .build());
+        }
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .message("Products fetched successfully")
+                        .data(response)
+                        .build()
+        );
+    }
 
 }

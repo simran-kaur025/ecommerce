@@ -37,7 +37,7 @@ public class SellerProfileServiceImpl implements SellerProfileService {
         Seller seller = sellerRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Seller profile not found"));
 
-        Address address = addressRepository.findByUser(user).orElse(null);
+        Address address = addressRepository.findFirstByUser(user).orElse(null);
 
         return SellerProfileResponseDTO.builder()
                 .id(user.getId())
@@ -115,7 +115,7 @@ public class SellerProfileServiceImpl implements SellerProfileService {
 
         if (request.getAddress() != null) {
 
-            Address address = addressRepository.findByUser(user)
+            Address address = addressRepository.findFirstByUser(user)
                     .orElse(new Address());
 
             address.setUser(user);

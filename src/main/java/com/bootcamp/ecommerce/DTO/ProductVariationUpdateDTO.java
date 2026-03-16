@@ -23,10 +23,6 @@ public class ProductVariationUpdateDTO {
     @Min(value = 0, message = "Price must be 0 or more")
     private Double price;
 
-    private String primaryImageName;
-
-    private List<String> secondaryImages;
-
     private Map<String, List<String>> metadata;
 
     private Boolean isActive;

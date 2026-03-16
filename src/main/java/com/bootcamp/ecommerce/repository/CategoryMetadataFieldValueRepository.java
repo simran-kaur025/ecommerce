@@ -21,7 +21,7 @@ public interface CategoryMetadataFieldValueRepository extends JpaRepository<Cate
 
     @Query(value = """
         SELECT *
-        FROM category_meta_field_values v
+        FROM category_metadata_field_value v
         WHERE v.category_id IN (:categoryIds)
         """,
             nativeQuery = true)

@@ -18,10 +18,11 @@ public class ProductSpecifications {
 
         return (root, query, cb) -> {
 
+
             List<Predicate> predicates = new ArrayList<>();
 
             predicates.add(cb.isFalse(root.get("isDeleted")));
-            predicates.add(cb.isTrue(root.get("isActive")));
+//            predicates.add(cb.isTrue(root.get("isActive")));
 
             if (filters.containsKey("categoryIds")) {
 
@@ -42,9 +43,9 @@ public class ProductSpecifications {
                 predicates.add(cb.equal(root.get("category").get("id"), categoryId));
             }
 
-            if (filters.containsKey("sellerId")) {
-                String sellerId = filters.get("sellerId");
-                predicates.add(cb.equal(root.get("createdBy"), sellerId));
+            if (filters.containsKey("sellerEmail")) {
+                String email = filters.get("sellerEmail");
+                predicates.add(cb.equal(root.get("createdBy"), email));
             }
 
             // NAME FILTER
@@ -83,12 +84,12 @@ public class ProductSpecifications {
 
                 if (filters.containsKey("minQuantity")) {
                     Integer minQuantity = Integer.parseInt(filters.get("minQuantity"));
-                    predicates.add(cb.greaterThanOrEqualTo(variationJoin.get("quantityAvailable"), minQuantity));
+                    predicates.add(cb.greaterThanOrEqualTo(variationJoin.get("quantity_available"), minQuantity));
                 }
 
                 if (filters.containsKey("maxQuantity")) {
                     Integer maxQuantity = Integer.parseInt(filters.get("maxQuantity"));
-                    predicates.add(cb.lessThanOrEqualTo(variationJoin.get("quantityAvailable"), maxQuantity));
+                    predicates.add(cb.lessThanOrEqualTo(variationJoin.get("quantity_available"), maxQuantity));
                 }
             }
 

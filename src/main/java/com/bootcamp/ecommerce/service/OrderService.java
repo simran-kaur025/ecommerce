@@ -2,6 +2,7 @@ package com.bootcamp.ecommerce.service;
 
 import com.bootcamp.ecommerce.DTO.*;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Locale;
 
@@ -20,6 +21,11 @@ public interface OrderService {
     Page<OrderResponseDTO> getAllOrdersAsAdmin(RequestParams requestParams);
 
     void notifyPendingOrders();
+
+    void updateOrderStatus(UpdateOrderStatusRequest request, UserDetails userDetails);
+
+
+
 
 
 }

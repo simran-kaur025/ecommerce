@@ -96,7 +96,7 @@ public class RegisterValidationServiceImpl implements RegisterValidationService 
         if (request.getConfirmPassword() == null ||
                 !request.getPassword().equals(request.getConfirmPassword())) {
 
-            String msg = messageSource.getMessage("success.register", null, locale);
+            String msg = messageSource.getMessage("error.password.mismatch", null, locale);
             errors.add(UserValidationDTO.builder()
                     .key("Confirm Password")
                     .errors(List.of(msg))

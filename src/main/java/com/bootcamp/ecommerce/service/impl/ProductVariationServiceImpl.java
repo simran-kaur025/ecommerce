@@ -60,10 +60,6 @@ public class ProductVariationServiceImpl implements ProductVariationService {
             throw new IllegalArgumentException("Price cannot be negative");
         }
 
-        String image = request.getPrimaryImageName();
-        if (image == null || !image.matches(".*\\.(jpg|jpeg|png|webp)$")) {
-            throw new IllegalArgumentException("Invalid image format");
-        }
 
         Map<String, List<String>> metadata = request.getMetadata();
         if (metadata == null || metadata.isEmpty()) {
@@ -128,8 +124,6 @@ public class ProductVariationServiceImpl implements ProductVariationService {
         variation.setProduct(product);
         variation.setQuantity_available(request.getQuantityAvailable());
         variation.setPrice(request.getPrice());
-        variation.setPrimaryImageName(image);
-        variation.setSecondaryImages(request.getSecondaryImages());
         variation.setMetadata(metadata);
         variation.setIsActive(true);
 
@@ -274,14 +268,6 @@ public class ProductVariationServiceImpl implements ProductVariationService {
 
         if (request.getPrice() != null) {
             variation.setPrice(request.getPrice());
-        }
-
-        if (request.getPrimaryImageName() != null) {
-            variation.setPrimaryImageName(request.getPrimaryImageName());
-        }
-
-        if (request.getSecondaryImages() != null) {
-            variation.setSecondaryImages(request.getSecondaryImages());
         }
 
         if (request.getIsActive() != null) {

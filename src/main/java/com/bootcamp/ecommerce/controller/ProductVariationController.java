@@ -16,7 +16,7 @@ import java.util.Map;
 
 
 @RestController
-@RequestMapping("/api/product-variations")
+@RequestMapping("/product-variation")
 @RequiredArgsConstructor
 public class ProductVariationController {
 
@@ -24,7 +24,7 @@ public class ProductVariationController {
     private final RequestParamsExtractor extractor;
 
     @PreAuthorize("hasRole('SELLER')")
-    @PostMapping("/add/product-variations/{productId}")
+    @PostMapping("/{productId}")
     public ResponseEntity<ResponseDTO> addVariation(@PathVariable Long productId, @Valid @RequestBody ProductVariationRequestDTO request) {
 
         productVariationService.addProductVariation( productId,request);
@@ -38,7 +38,7 @@ public class ProductVariationController {
     }
 
     @PreAuthorize("hasRole('SELLER')")
-    @GetMapping("/get/product-variations/{variationId}")
+    @GetMapping("/{variationId}")
     public ResponseEntity<ResponseDTO> getProductVariation(@PathVariable Long variationId) {
 
         ProductVariationResponse response = productVariationService.getProductVariation(variationId);
@@ -52,7 +52,7 @@ public class ProductVariationController {
     }
 
     @PreAuthorize("hasRole('SELLER')")
-    @GetMapping("/get/all/products-variations/{productId}")
+    @GetMapping("/products-variations/{productId}")
     public ResponseEntity<ResponseDTO> getProductVariations(@PathVariable Long productId, @Valid @RequestParam Map<String,String> allParams) {
         RequestParams requestParams = extractor.extract(allParams);
         PageResponse<ProductVariationResponse> response = productVariationService.getAllProductVariations(productId,requestParams);
@@ -66,7 +66,7 @@ public class ProductVariationController {
     }
 
     @PreAuthorize("hasRole('SELLER')")
-    @PutMapping("/update/variation")
+    @PutMapping
     public ResponseEntity<ResponseDTO> updateVariation(@Valid @RequestBody ProductVariationUpdateDTO request) {
 
         productVariationService.updateProductVariation(request);

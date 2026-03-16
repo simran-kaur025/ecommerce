@@ -13,7 +13,6 @@ public class CustomerProfileResponseDTO {
     private String lastName;
     private Boolean isActive;
     private String contact;
-    private String image;
 
 }
 

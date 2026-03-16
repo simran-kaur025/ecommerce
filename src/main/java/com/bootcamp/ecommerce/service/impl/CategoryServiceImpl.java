@@ -307,8 +307,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         } else {
 
-            boolean exists = categoryRepository
-                    .existsByNameIgnoreCaseAndParentCategoryIsNullAndIdNot(newName, category.getId());
+            boolean exists = categoryRepository .existsByNameIgnoreCaseAndParentCategoryIsNullAndIdNot(newName, category.getId());
 
             if (exists) {
                 throw new IllegalArgumentException("Category name already exists at root");
@@ -415,14 +414,22 @@ public class CategoryServiceImpl implements CategoryService {
 
         List<String> brands = productRepository.findDistinctBrandByCategoryIds(categoryIds);
 
+        Object[] result = productVariationRepository.findMinMaxPriceByCategories(categoryIds);
+
         Double minPrice = 0.0;
         Double maxPrice = 0.0;
 
-        Object[] priceRange = productVariationRepository.findMinMaxPriceByCategories(categoryIds);
+        if (result != null && result.length > 0) {
 
-        if (priceRange != null && priceRange[0] != null && priceRange[1] != null) {
-            minPrice = (Double) priceRange[0];
-            maxPrice = (Double) priceRange[1];
+            Object[] priceRange = (Object[]) result[0];
+
+            if (priceRange[0] != null) {
+                minPrice = ((Number) priceRange[0]).doubleValue();
+            }
+
+            if (priceRange[1] != null) {
+                maxPrice = ((Number) priceRange[1]).doubleValue();
+            }
         }
 
         return new FilterResponse(metadataFields, brands, minPrice, maxPrice);

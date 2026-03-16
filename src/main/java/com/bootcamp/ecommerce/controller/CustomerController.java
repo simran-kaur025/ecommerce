@@ -5,21 +5,18 @@ import com.bootcamp.ecommerce.DTO.CustomerProfileResponseDTO;
 import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import com.bootcamp.ecommerce.DTO.UpdateProfileRequestDTO;
 import com.bootcamp.ecommerce.constant.Constant;
-import com.bootcamp.ecommerce.entity.User;
 import com.bootcamp.ecommerce.service.CustomerProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/customer")
+@RequestMapping("/customer")
 @RequiredArgsConstructor
-public class CustomerProfileController {
+public class CustomerController {
 
     private final CustomerProfileService customerProfileService;
 
@@ -67,7 +64,7 @@ public class CustomerProfileController {
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @PostMapping("/add/address")
+    @PostMapping("/address")
     public ResponseEntity<ResponseDTO> addAddress(@Valid @RequestBody AddressDTO request) {
 
         customerProfileService.addAddress(request);
@@ -83,7 +80,7 @@ public class CustomerProfileController {
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @DeleteMapping("/delete/address/{addressId}")
+    @DeleteMapping("/address/{addressId}")
     public ResponseEntity<ResponseDTO> deleteAddress(
             @PathVariable Long addressId) {
 

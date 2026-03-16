@@ -10,7 +10,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.parameters.P;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,14 +21,14 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/category")
+@RequestMapping("/category")
 public class CategoryController {
     private final CategoryService categoryService;
     private final RequestParamsExtractor extractor;
 
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/add/category")
+    @PostMapping
     public ResponseEntity<ResponseDTO> addCategory(@Valid @RequestBody CategoryRequestDTO request, Locale locale) {
 
         ResponseDTO response = categoryService.addCategory(request,locale);
@@ -37,7 +39,7 @@ public class CategoryController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/view/category/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ResponseDTO> viewOneCategory(@PathVariable Long id) {
 
         CategoryResponse response = categoryService.getOneCategory(id);
@@ -50,13 +52,45 @@ public class CategoryController {
         );
     }
 
-    @GetMapping("/get/all/categories")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO> viewAllCategories(@RequestParam Map<String,String> allParams) {
+    @GetMapping
+    public ResponseEntity<ResponseDTO> getAllCategories(@RequestParam(required = false) Map<String, String> allParams, @RequestParam(required = false) Long categoryId, @AuthenticationPrincipal UserDetails userDetails) {
 
-        RequestParams requestParams = extractor.extract(allParams);
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ResponseDTO.builder()
+                            .status("FAIL")
+                            .message("Authentication required")
+                            .build());
+        }
 
-        Page<CategoryResponse> response = categoryService.getAllCategories(requestParams);
+        String role = userDetails.getAuthorities().stream()
+                .findFirst()
+                .map(Object::toString)
+                .orElse("");
+
+        Object response;
+
+        switch (role) {
+            case "ROLE_ADMIN":
+                RequestParams requestParams = extractor.extract(allParams != null ? allParams : Map.of());
+                response = categoryService.getAllCategories(requestParams);
+                break;
+
+            case "ROLE_SELLER":
+                response = categoryService.getAllCategoriesAsSeller();
+                break;
+
+            case "ROLE_CUSTOMER":
+                response = categoryService.getCategoriesAsCustomer(categoryId);
+                break;
+
+            default:
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ResponseDTO.builder()
+                                .status("FAIL")
+                                .message("Unauthorized role")
+                                .build());
+        }
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -67,7 +101,7 @@ public class CategoryController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/add/metadata-fields/values")
+    @PostMapping("/metadata-values")
     public ResponseEntity<ResponseDTO> addMetadataToCategory( @Valid @RequestBody AddCategoryMetadataRequest request) {
 
         categoryService.addMetadataToCategory(request);
@@ -81,7 +115,7 @@ public class CategoryController {
 
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/update/metadata-values")
+    @PutMapping("/metadata-values")
     public ResponseEntity<ResponseDTO> updateValues(@RequestBody AddCategoryMetadataRequest request) {
 
         categoryService.updateMetadataValues(request);
@@ -93,7 +127,7 @@ public class CategoryController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/update/categories")
+    @PutMapping
     public ResponseEntity<ResponseDTO> updateCategory( @Valid @RequestBody BasicCategoryDTO request) {
 
         categoryService.updateCategory(request);
@@ -104,37 +138,6 @@ public class CategoryController {
                         .message("Category updated successfully")
                         .build()
         );
-    }
-
-
-    /* Seller Category Api */
-
-    @GetMapping("/get/all/categories/seller")
-    @PreAuthorize("hasRole('SELLER')")
-    public ResponseEntity<ResponseDTO> getAllCategories(){
-
-        List<LeafCategoryResponse> response = categoryService.getAllCategoriesAsSeller();
-
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .data(response)
-                        .build()
-        );
-    }
-
-
-    /* Customer Category Api */
-    @GetMapping("get/all/categories/customer")
-    public ResponseDTO getCategoriesAsCustomer(@RequestParam(required = false) Long categoryId) {
-
-        List<CategoryResponse> data = categoryService.getCategoriesAsCustomer(categoryId);
-
-        return ResponseDTO.builder()
-                .status("SUCCESS")
-                .message("Categories fetched successfully")
-                .data(data)
-                .build();
     }
 
     @GetMapping("/{categoryId}/filters")

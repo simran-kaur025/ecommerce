@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Locale;
 
 @RestController
-@RequestMapping("/api/register")
+@RequestMapping("/register")
 @RequiredArgsConstructor
 @Slf4j
 public class RegisterController {
@@ -35,8 +35,7 @@ public class RegisterController {
     }
 
     @PutMapping("/customer/activate")
-    public ResponseEntity<ResponseDTO> activateAccount(
-            @RequestParam("token") String token) {
+    public ResponseEntity<ResponseDTO> activateAccount(@RequestParam("token") String token) {
 
         log.info("Account activation request received");
         ResponseDTO response = registerService.activateAccount(token);

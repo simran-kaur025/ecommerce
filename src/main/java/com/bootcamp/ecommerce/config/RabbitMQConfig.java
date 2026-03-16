@@ -39,7 +39,4 @@ public class RabbitMQConfig {
                 .with(routing_key);
     }
 
-    // connection Factory
-    //rabbitTemplate
-    //RabbitAdmin
 }

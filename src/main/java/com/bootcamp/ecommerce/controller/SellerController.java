@@ -12,9 +12,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/seller")
+@RequestMapping("/seller")
 @RequiredArgsConstructor
-public class SellerProfileController {
+public class SellerController {
 
     private final SellerProfileService sellerProfileService;
     @GetMapping("/profile")

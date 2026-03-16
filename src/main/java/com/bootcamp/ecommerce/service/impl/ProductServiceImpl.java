@@ -25,8 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
-import static com.bootcamp.ecommerce.constant.Constant.ADMIN_EMAIL;
-import static com.bootcamp.ecommerce.constant.Constant.PRODUCT_APPROVAL_SUBJECT;
+
+import static com.bootcamp.ecommerce.constant.EmailConstants.ADMIN_EMAIL;
 
 @Service
 @RequiredArgsConstructor
@@ -83,73 +83,73 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
-    @Cacheable(
-            value = "products",
-            key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
-    )
-    @Override
-    @Transactional(readOnly = true)
-    public ProductResponse getProduct(Long productId) {
+        @Cacheable(
+                value = "products",
+                key = "#productId + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
+        )
+        @Override
+        @Transactional(readOnly = true)
+        public ProductResponse getProduct(Long productId) {
 
-        Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+            Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        if (product.getIsDeleted()) {
-            throw new IllegalArgumentException("Product is deleted");
+            if (product.getIsDeleted()) {
+                throw new IllegalArgumentException("Product is deleted");
+            }
+
+            String email = SecurityContextHolder
+                    .getContext()
+                    .getAuthentication()
+                    .getName();
+
+            if (!product.getCreatedBy().equals(email)) {
+                throw new AccessDeniedException("You are not authorized to update this product");
+            }
+
+            return mapToProductResponse(product);
         }
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        private ProductResponse mapToProductResponse(Product product) {
 
-        if (!product.getCreatedBy().equals(email)) {
-            throw new AccessDeniedException("You are not authorized to update this product");
+            Category category = product.getCategory();
+
+            BasicCategoryDTO parent = null;
+            if (category.getParentCategory() != null) {
+                parent = new BasicCategoryDTO(
+                        category.getParentCategory().getId(),
+                        category.getParentCategory().getName()
+                );
+            }
+
+            List<MetadataDTO> metadata = categoryMetadataFieldValueRepository.findByCategory(category)
+                            .stream()
+                            .map(meta -> new MetadataDTO(
+                                    meta.getCategoryMetadataField().getId(),
+                                    meta.getCategoryMetadataField().getName(),
+                                    meta.getValueList()
+                            ))
+                            .toList();
+
+            CategoryDetailDTO categoryDTO = CategoryDetailDTO.builder()
+                    .id(category.getId())
+                    .name(category.getName())
+                    .parentCategory(parent)
+                    .metadata(metadata)
+                    .build();
+
+            return ProductResponse.builder()
+                    .id(product.getId())
+                    .name(product.getName())
+                    .description(product.getDescription())
+                    .brand(product.getBrand())
+                    .active(product.getIsActive())
+                    .category(categoryDTO)
+                    .build();
         }
 
-        return mapToProductResponse(product);
-    }
-
-    private ProductResponse mapToProductResponse(Product product) {
-
-        Category category = product.getCategory();
-
-        BasicCategoryDTO parent = null;
-        if (category.getParentCategory() != null) {
-            parent = new BasicCategoryDTO(
-                    category.getParentCategory().getId(),
-                    category.getParentCategory().getName()
-            );
-        }
-
-        List<MetadataDTO> metadata = categoryMetadataFieldValueRepository.findByCategory(category)
-                        .stream()
-                        .map(meta -> new MetadataDTO(
-                                meta.getCategoryMetadataField().getId(),
-                                meta.getCategoryMetadataField().getName(),
-                                meta.getValueList()
-                        ))
-                        .toList();
-
-        CategoryDetailDTO categoryDTO = CategoryDetailDTO.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .parentCategory(parent)
-                .metadata(metadata)
-                .build();
-
-        return ProductResponse.builder()
-                .id(product.getId())
-                .name(product.getName())
-                .description(product.getDescription())
-                .brand(product.getBrand())
-                .active(product.getIsActive())
-                .category(categoryDTO)
-                .build();
-    }
 
 
-
-    @Cacheable(value = "productsList", key = "#requestParams.cacheKey()")
+    @Cacheable(value = "productsList", key = "T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name + '_' + #requestParams.cacheKey()")
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> getAllProducts(RequestParams requestParams) {

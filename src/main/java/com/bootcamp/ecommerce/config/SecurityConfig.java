@@ -49,14 +49,13 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
                 .addFilterAt(customFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/register/**").permitAll()
+                        .requestMatchers("/register/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/rabbit/send").permitAll()
+                        .requestMatchers("/rabbit/send").permitAll()
                         .anyRequest().authenticated()
                 );
 
@@ -71,16 +70,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CustomAuthenticationFilter customAuthenticationFilter(
-            AuthenticationManager authenticationManager,
+    public CustomAuthenticationFilter customAuthenticationFilter(AuthenticationManager  authenticationManager,
             JwtTokenService jwtTokenService,
             UserRepository userRepository,
             RefreshTokenRepository refreshTokenRepository,
             AccessTokenRepository accessTokenRepository,
             TokenService tokenService) {
 
-        CustomAuthenticationFilter filter =
-                new CustomAuthenticationFilter(
+        CustomAuthenticationFilter filter = new CustomAuthenticationFilter(
                         userRepository,
                         jwtTokenService,
                         refreshTokenRepository,

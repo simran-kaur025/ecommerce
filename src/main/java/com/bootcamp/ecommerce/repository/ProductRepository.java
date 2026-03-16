@@ -29,64 +29,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> , JpaSpe
     Page<Product> findAll(Specification specification, Pageable pageable);
 
 
-    @Query(value = "SELECT p.* \n" +
-            "FROM products p \n" +
-            "WHERE p.is_deleted = false \n" +
-            "AND p.is_active = true \n" +
-            "AND (:categoryId IS NULL OR p.category_id = :categoryId) \n" +
-            "AND (:sellerId IS NULL OR p.seller_user_id = :sellerId) \n" +
-            "AND ( \n" +
-            "    :query IS NULL OR \n" +
-            "    LOWER(p.name) LIKE CONCAT('%', LOWER(:query), '%') OR \n" +
-            "    LOWER(p.brand) LIKE CONCAT('%', LOWER(:query), '%') \n" +
-            ")",
-            nativeQuery = true)
-    Page<Product> searchProducts(
-            @Param("categoryId") Long categoryId,
-            @Param("sellerId") Long sellerId,
-            @Param("query") String query,
-            Pageable pageable
-    );
-
-
-    @Query(value = "SELECT p.* \n" +
-            "FROM products p \n" +
-            "WHERE p.is_deleted = false \n" +
-            "AND p.is_active = true \n" +
-            "AND p.category_id IN (:categoryIds) \n" +
-            "AND ( \n" +
-            "    :query IS NULL OR \n" +
-            "    LOWER(p.name) LIKE CONCAT('%', LOWER(:query), '%') OR \n" +
-            "    LOWER(p.brand) LIKE CONCAT('%', LOWER(:query), '%') \n" +
-            ")",
-            nativeQuery = true)
-    Page<Product> searchProductsWithCategory(
-            @Param("categoryIds") List<Long> categoryIds,
-            @Param("query") String query,
-            Pageable pageable
-    );
-
-
-    @Query(value = """
-        SELECT * FROM products p
-        WHERE p.category_id = :categoryId
-        AND p.id <> :productId
-        AND p.is_deleted = false
-        AND p.is_active = true
-        AND (
-            :query IS NULL OR
-            LOWER(p.name) LIKE CONCAT('%', LOWER(:query), '%') OR
-            LOWER(p.brand) LIKE CONCAT('%', LOWER(:query), '%')
-        )
-        """,
-            nativeQuery = true)
-    Page<Product> findSimilarProducts(
-            @Param("categoryId") Long categoryId,
-            @Param("productId") Long productId,
-            @Param("query") String query,
-            Pageable pageable
-    );
-
      boolean existsByCategoryIdAndIsDeletedFalse(Long id);
 
     @Query(value = """

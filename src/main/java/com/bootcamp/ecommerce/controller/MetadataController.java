@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/metadata")
+@RequestMapping("/metadata")
 @RequiredArgsConstructor
 public class MetadataController {
 
@@ -31,9 +31,8 @@ public class MetadataController {
 
     private final RequestParamsExtractor extractor;
 
-
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/add/metadata-fields")
+    @PostMapping("/metadata-field")
     public ResponseEntity<ResponseDTO> createMetadataField(@Valid @RequestBody CategoryMetadataFieldRequest request) {
 
         CategoryMetadataField field = metadataService.createMetadataField(request);
@@ -47,7 +46,7 @@ public class MetadataController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/get/metadata-fields")
+    @GetMapping("/metadata-fields")
     public ResponseEntity<ResponseDTO> getAllMetadataFields(@RequestParam Map<String, String> allParams) {
 
         RequestParams requestParams = extractor.extract(allParams);

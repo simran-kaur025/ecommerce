@@ -10,7 +10,7 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class    AddressDTO {
+public class AddressDTO {
 
     @NotBlank(message = "City is required")
     @Size(min = 2, max = 100, message = "City must be between 2 and 100 characters")

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "category_metadata_field_values")
+@Table(name = "category_metadata_field_value")
 @Getter
 @Setter
 public class CategoryMetadataFieldValue extends Auditable {

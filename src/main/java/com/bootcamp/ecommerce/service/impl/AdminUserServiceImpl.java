@@ -122,10 +122,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     public ResponseDTO activateUser(Long userId) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found with id: " + userId)
-                );
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
 
         if (Boolean.TRUE.equals(user.getIsActive())) {
@@ -147,11 +144,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     public ResponseDTO deactivateUser(Long userId) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId)
-                );
-
-
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         if (!Boolean.TRUE.equals(user.getIsActive())) {
             throw new InvalidOperationException("User account is already deactivated");

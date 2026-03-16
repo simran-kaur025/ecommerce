@@ -1,6 +1,5 @@
 package com.bootcamp.ecommerce.service.impl;
 
-import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.entity.OrderProduct;
 import com.bootcamp.ecommerce.entity.Product;
 import com.bootcamp.ecommerce.entity.Seller;
@@ -17,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import static com.bootcamp.ecommerce.constant.Constant.*;
+import static com.bootcamp.ecommerce.constant.EmailConstants.*;
 
 @Slf4j
 @Service
@@ -34,7 +33,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendActivationEmail(String email, String token) {
         try {
-            String activationLink = Constant.ACTIVATE_ACCOUNT_URL + token;
+            String activationLink = ACTIVATE_ACCOUNT_URL + token;
 
             String body = """
                     Click the link below to activate your account.
@@ -43,7 +42,7 @@ public class EmailServiceImpl implements EmailService {
                     %s
                     """.formatted(activationLink);
 
-            sendEmail(email, Constant.ACTIVATE_ACCOUNT_SUBJECT, body);
+            sendEmail(email, ACTIVATE_ACCOUNT_SUBJECT, body);
 
         } catch (Exception ex) {
             log.error("Failed to send activation email to {}", email, ex);
@@ -53,9 +52,7 @@ public class EmailServiceImpl implements EmailService {
     @Async
     public void sendSellerRegistrationEmail(String toEmail) {
         try {
-            sendEmail(toEmail,
-                    Constant.SELLER_CREATED_SUBJECT,
-                    Constant.SELLER_BODY);
+            sendEmail(toEmail,SELLER_CREATED_SUBJECT, SELLER_BODY);
 
             log.info("Seller registration email sent to {}", toEmail);
 
@@ -68,7 +65,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendForgotPasswordEmail(String email, String token) {
         try {
-            String resetLink = Constant.RESET_PASSWORD_URL + token;
+            String resetLink = RESET_PASSWORD_URL + token;
 
             String body = """
                     Click the link to reset password to your account
@@ -77,7 +74,7 @@ public class EmailServiceImpl implements EmailService {
                     """.formatted(resetLink);
 
             log.info("Sending forgot password email to {}", email);
-            sendEmail(email, Constant.RESET_PASSWORD_SUBJECT, body);
+            sendEmail(email, RESET_PASSWORD_SUBJECT, body);
 
         } catch (Exception ex) {
             log.error("Failed to send forgot password email to {}", email, ex);
@@ -102,7 +99,7 @@ public class EmailServiceImpl implements EmailService {
                 product.getDescription()
         );
 
-        sendEmail(toEmail, Constant.PRODUCT_ACTIVATED_SUBJECT, body);
+        sendEmail(toEmail, PRODUCT_ACTIVATED_SUBJECT, body);
     }
 
     @Async
@@ -130,7 +127,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendPasswordChangeEmail(String email) {
 
-        sendEmail(email, Constant.PASSWORD_CHANGED_SUBJECT, Constant.PASSWORD_CHANGED_BODY);
+        sendEmail(email, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_BODY);
     }
 
 
@@ -164,13 +161,13 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendAccountActivatedEmail(String email) {
 
-        sendEmail(email, Constant.ACCOUNT_ACTIVATED_SUBJECT, Constant.ACCOUNT_ACTIVATED_MESSAGE);
+        sendEmail(email, ACCOUNT_ACTIVATED_SUBJECT, ACCOUNT_ACTIVATED_MESSAGE);
     }
     @Async
     @Override
     public void sendAccountDeactivatedEmail(String email) {
 
-        sendEmail(email, Constant.ACCOUNT_DEACTIVATED_SUBJECT, Constant.ACCOUNT_DEACTIVATED_MESSAGE);
+        sendEmail(email, ACCOUNT_DEACTIVATED_SUBJECT, ACCOUNT_DEACTIVATED_MESSAGE);
     }
 
     @Async

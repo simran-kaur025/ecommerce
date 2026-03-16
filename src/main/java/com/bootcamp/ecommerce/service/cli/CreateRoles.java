@@ -2,8 +2,8 @@ package com.bootcamp.ecommerce.service.cli;
 
 import com.bootcamp.ecommerce.entity.Role;
 import com.bootcamp.ecommerce.repository.RoleRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -12,12 +12,12 @@ import java.util.List;
 @Component
 @Order(1)
 @RequiredArgsConstructor
-    public class CreateRoles {
+public class CreateRoles implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
 
-    @PostConstruct
-    public void initRoles() {
+    @Override
+    public void run(String... args) {
 
         List<String> roles = List.of(
                 "ROLE_ADMIN",

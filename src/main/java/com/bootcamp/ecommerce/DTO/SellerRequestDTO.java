@@ -1,9 +1,7 @@
 package com.bootcamp.ecommerce.DTO;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,7 +12,6 @@ public class SellerRequestDTO {
     @Email(message = "Email must be valid")
     @NotBlank(message = "Email is mandatory")
     private String email;
-
 
     @NotBlank(message = "Password is mandatory")
     @Size(min = 8, message = "Password must be at least 8 characters")
@@ -46,9 +43,11 @@ public class SellerRequestDTO {
     @NotBlank(message = "Company name is mandatory")
     private String companyName;
 
-    @NotBlank(message = "Phone number is mandatory")
+    @NotBlank(message = "Company Contact is mandatory")
     @Size(min = 10, max = 10, message = "Phone number must be valid")
     private String companyContact;
 
+    @NotNull(message = "Company address is mandatory")
+    @Valid
     private AddressDTO address;
 }

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin")
+@RequestMapping("/admin")
 public class AdminController {
 
     private final AdminUserService adminUserService;
@@ -49,7 +49,7 @@ public class AdminController {
                 .build();
     }
 
-    @PatchMapping("/{customerId}/activate")
+    @PatchMapping("/{userId}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseDTO activateUser(@PathVariable Long userId) {
 
@@ -58,7 +58,7 @@ public class AdminController {
     }
 
 
-    @PatchMapping("/{customerId}/deactivate")
+    @PatchMapping("/{userId}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseDTO deactivateUser(@PathVariable Long userId) {
 

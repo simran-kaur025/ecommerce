@@ -12,26 +12,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.Duration;
 
-//@Configuration
-//public class RedisConfig {
-//
-//    @Bean
-//    public RedisCacheConfiguration cacheConfiguration() {
-//
-//        ObjectMapper mapper = new ObjectMapper();
-//        mapper.registerModule(new JavaTimeModule());
-//        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-//
-//        GenericJackson2JsonRedisSerializer serializer =
-//                new GenericJackson2JsonRedisSerializer(mapper);
-//
-//        return RedisCacheConfiguration.defaultCacheConfig()
-//                .entryTtl(Duration.ofMinutes(10))
-//                .serializeValuesWith(
-//                        RedisSerializationContext.SerializationPair.fromSerializer(serializer)
-//                );
-//    }
-//}
+
 @Configuration
 public class RedisConfig {
 
@@ -48,8 +29,7 @@ public class RedisConfig {
                 ObjectMapper.DefaultTyping.NON_FINAL
         );
 
-        GenericJackson2JsonRedisSerializer serializer =
-                new GenericJackson2JsonRedisSerializer(mapper);
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(mapper);
 
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))

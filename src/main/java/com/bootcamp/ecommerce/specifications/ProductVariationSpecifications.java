@@ -30,12 +30,12 @@ public class ProductVariationSpecifications {
 
             if (filters.containsKey("minQuantity")) {
                 Integer minQuantity = Integer.parseInt(filters.get("minQuantity"));
-                predicates.add(cb.greaterThanOrEqualTo(root.get("quantityAvailable"), minQuantity));
+                predicates.add(cb.greaterThanOrEqualTo(root.get("quantity_available"), minQuantity));
             }
 
             if (filters.containsKey("maxQuantity")) {
                 Integer maxQuantity = Integer.parseInt(filters.get("maxQuantity"));
-                predicates.add(cb.lessThanOrEqualTo(root.get("quantityAvailable"), maxQuantity));
+                predicates.add(cb.lessThanOrEqualTo(root.get("quantity_available"), maxQuantity));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

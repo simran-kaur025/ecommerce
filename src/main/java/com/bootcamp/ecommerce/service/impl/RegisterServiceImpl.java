@@ -26,7 +26,6 @@
     import java.util.ArrayList;
     import java.util.List;
     import java.util.Locale;
-    import java.util.Optional;
 
     @Service
     @RequiredArgsConstructor
@@ -82,8 +81,7 @@
                 throw new IllegalStateException("Activation token creation failed");
             }
             try {
-                emailService.sendActivationEmail(user.getEmail(), activationToken.getToken()
-                );
+                emailService.sendActivationEmail(user.getEmail(), activationToken.getToken());
             } catch (Exception ex) {
                 log.error("Failed to send activation email for user {}", user.getEmail(), ex);
             }
@@ -120,8 +118,7 @@
 
             userRepository.save(user);
 
-            Role role = roleRepository.findByAuthority("ROLE_SELLER")
-                    .orElseThrow(() -> new RuntimeException("ROLE_SELLER not found"));
+            Role role = roleRepository.findByAuthority("ROLE_SELLER").orElseThrow(() -> new RuntimeException("ROLE_SELLER not found"));
 
 
             UserRole userRole = new UserRole();
