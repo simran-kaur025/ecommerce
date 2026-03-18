@@ -33,8 +33,7 @@ public class CategoryController {
 
         ResponseDTO response = categoryService.addCategory(request,locale);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(response);
     }
 

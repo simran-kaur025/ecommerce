@@ -2,6 +2,8 @@ package com.bootcamp.ecommerce.service.impl;
 
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.*;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
+import com.bootcamp.ecommerce.exceptionalHandler.ProductInactiveException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
@@ -47,6 +49,7 @@ public class ProductServiceImpl implements ProductService {
     public void addProduct(ProductRequestDTO request) {
 
         String email= SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Add product request received from seller email: {}", email);
 
         Seller seller = sellerRepository.findByUserEmail(email).orElseThrow(() -> new ResourceNotFoundException("Seller not Found"));
 
@@ -54,13 +57,15 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category not Found"));
 
         if (categoryRepository.existsByParentCategoryId(category.getId())) {
-            throw new IllegalArgumentException("Product can only be added to leaf category");
+            throw new BadRequestException("Product can only be added to leaf category");
         }
 
         boolean exists = productRepository.existsByNameIgnoreCaseAndBrandIgnoreCaseAndCategoryAndSeller(request.getName(), request.getBrand(), category, seller);
 
         if (exists) {
-            throw new IllegalArgumentException("Product already exists for this seller, brand and category");
+            log.warn("Duplicate product attempt: name={}, brand={}, seller={}", request.getName(), request.getBrand(), seller.getId());
+
+            throw new BadRequestException("Product already exists for this seller, brand and category");
         }
 
         Product product = new Product();
@@ -74,11 +79,9 @@ public class ProductServiceImpl implements ProductService {
         product.setIsActive(false);
 
         productRepository.save(product);
+        log.info("Product saved successfully with id {} by seller {}", product.getId(), seller.getId());
 
         emailService.sendProductApprovalEmail(ADMIN_EMAIL, product, seller.getCompanyName());
-
-        log.info("Product created successfully by seller {}", seller.getId());
-
 
     }
 
@@ -90,11 +93,12 @@ public class ProductServiceImpl implements ProductService {
         @Override
         @Transactional(readOnly = true)
         public ProductResponse getProduct(Long productId) {
+            log.info("Fetching product with id {}", productId);
 
             Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
             if (product.getIsDeleted()) {
-                throw new IllegalArgumentException("Product is deleted");
+                throw new ResourceNotFoundException("Product is deleted");
             }
 
             String email = SecurityContextHolder
@@ -105,7 +109,7 @@ public class ProductServiceImpl implements ProductService {
             if (!product.getCreatedBy().equals(email)) {
                 throw new AccessDeniedException("You are not authorized to update this product");
             }
-
+            log.info("Product {} fetched successfully by user {}", productId, email);
             return mapToProductResponse(product);
         }
 
@@ -154,13 +158,9 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> getAllProducts(RequestParams requestParams) {
 
-        if (requestParams.getOffset() < 0) {
-            throw new IllegalArgumentException("Offset cannot be negative");
-        }
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Fetching product list for seller {}", email);
 
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
 
         Map<String, String> filters = new HashMap<>(requestParams.getFilters());
         filters.put("sellerEmail", email);
@@ -178,6 +178,7 @@ public class ProductServiceImpl implements ProductService {
 
         Page<Product> productPage = productRepository.findAll(specification, pageable);
 
+        log.info("Fetched {} products for seller {}", productPage.getTotalElements(), email);
         List<ProductResponse> products = productPage
                 .getContent()
                 .stream()
@@ -205,11 +206,12 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deleteProduct(Long productId) {
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        log.info("Delete product request received for productId {}", productId);
+
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (product.getIsDeleted()) {
-            throw new IllegalArgumentException("Product already deleted");
+            throw new ProductInactiveException("Product already deleted");
         }
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -221,6 +223,7 @@ public class ProductServiceImpl implements ProductService {
         product.setIsDeleted(true);
 
         productRepository.save(product);
+        log.info("Product {} successfully deleted by user {}", productId, email);
     }
 
     @Caching(evict = {
@@ -234,11 +237,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void updateProduct(Long productId, UpdateProductRequest request) {
 
+        log.info("Update product request received for productId {}", productId);
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (product.getIsDeleted()) {
-            throw new IllegalArgumentException("Product is deleted or not active");
+            throw new ProductInactiveException("Product is deleted or not active");
         }
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -246,7 +251,6 @@ public class ProductServiceImpl implements ProductService {
         if (!product.getCreatedBy().equals(email)) {
             throw new AccessDeniedException("You are not authorized to update this product");
         }
-
 
         if (request.getName() != null && !request.getName().equalsIgnoreCase(product.getName())) {
 
@@ -259,8 +263,7 @@ public class ProductServiceImpl implements ProductService {
                             );
 
             if (exists) {
-                throw new IllegalArgumentException(
-                        "Product name already exists for this brand and category");
+                throw new BadRequestException("Product name already exists for this brand and category");
             }
 
             product.setName(request.getName());
@@ -279,6 +282,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         productRepository.save(product);
+        log.info("Product {} updated successfully by user {}", productId, email);
     }
 
 
@@ -286,22 +290,25 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     @Override
     public ProductDetailResponseDTO viewProductAsCustomer(Long productId) {
-
+        log.info("Customer request received to view product {}", productId);
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (product.getIsDeleted() || !product.getIsActive()) {
-            throw new IllegalArgumentException("Product not available");
+            throw new ProductInactiveException("Product not available");
         }
 
         List<ProductVariation> variations = productVariationRepository.findByProductAndIsActiveTrue(product);
 
         if (variations.isEmpty()) {
-            throw new IllegalArgumentException("Product has no valid variations");
+            throw new BadRequestException("Product has no valid variations");
         }
+        log.info("Product {} fetched successfully with {} variations", productId, variations.size());
 
         return mapToProductDetailResponse(product, variations);
     }
+
+
 
     @Cacheable(
             value = "publicProductList",
@@ -311,6 +318,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public PageResponse<ProductDetailResponseDTO> getAllProductsAsCustomer(Long categoryId, RequestParams requestParams) {
 
+        log.info("Customer requested product list for category {}", categoryId);
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new RuntimeException("Category not found"));
 
         List<Long> leafCategoryIds = getLeafCategoryIds(category.getId());
@@ -328,6 +336,8 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageable = PageRequest.of(pageNumber, requestParams.getMax(), Sort.by(direction, requestParams.getSortBy()));
 
         Page<Product> productPage = productRepository.findAll(specification, pageable);
+        log.info("Fetched {} products for category {}", productPage.getTotalElements(), categoryId);
+
         List<ProductDetailResponseDTO> products = productPage.getContent()
                 .stream()
                 .map(p -> {
@@ -338,6 +348,7 @@ public class ProductServiceImpl implements ProductService {
                     return mapToProductDetailResponse(p, variations);
                 })
                 .toList();
+        log.info("Returning paginated product response for category {}", categoryId);
 
         return new PageResponse<>(
                 products,
@@ -405,7 +416,9 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductListResponseDTO getSimilarProducts(Long productId, RequestParams params) {
 
-        Product product = productRepository.findById(productId).orElseThrow(() -> new RuntimeException("Product not found"));
+        log.info("Request received to fetch similar products for productId {}", productId);
+
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         Map<String, String> filters = new HashMap<>();
 
@@ -422,7 +435,7 @@ public class ProductServiceImpl implements ProductService {
         Pageable pageable = PageRequest.of(pageNumber, params.getMax(), Sort.by(direction, params.getSortBy()));
 
         Page<Product> page = productRepository.findAll(specification, pageable);
-
+        log.info("Found {} similar products for product {}", page.getTotalElements(), productId);
         List<ProductDetailResponseDTO> products = page.getContent()
                         .stream()
                         .map(p -> {
@@ -432,6 +445,7 @@ public class ProductServiceImpl implements ProductService {
 
                         })
                         .toList();
+        log.info("Returning similar product response for product {}", productId);
 
         return ProductListResponseDTO.builder()
                 .products(products)
@@ -502,11 +516,11 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (!Boolean.TRUE.equals(product.getIsActive())) {
-            throw new IllegalArgumentException("Product already inactive");
+            throw new BadRequestException("Product already inactive");
         }
 
         if (Boolean.TRUE.equals(product.getIsDeleted())) {
-            throw new IllegalArgumentException("Product is deleted");
+            throw new BadRequestException("Product is deleted");
         }
 
         product.setIsActive(false);
@@ -525,15 +539,14 @@ public class ProductServiceImpl implements ProductService {
     public void activateProduct(Long productId) {
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (Boolean.TRUE.equals(product.getIsActive())) {
-            throw new IllegalArgumentException("Product already active");
+            throw new BadRequestException("Product already active");
         }
 
         if (Boolean.TRUE.equals(product.getIsDeleted())) {
-            throw new IllegalArgumentException("Cannot activate deleted product");
+            throw new BadRequestException("Cannot activate deleted product");
         }
 
         product.setIsActive(true);

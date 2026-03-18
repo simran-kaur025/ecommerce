@@ -7,7 +7,6 @@ import com.bootcamp.ecommerce.DTO.ResponseDTO;
 import java.util.Locale;
 
 public interface AuthService {
-    ResponseDTO login(LoginRequestDTO requestDTO);
     ResponseDTO logout(String refreshToken);
     ResponseDTO refreshAccessToken(String accessTokenValue);
     ResponseDTO forgotPassword(String email);

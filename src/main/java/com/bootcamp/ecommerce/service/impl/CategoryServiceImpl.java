@@ -4,6 +4,7 @@ import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.Category;
 import com.bootcamp.ecommerce.entity.CategoryMetadataField;
 import com.bootcamp.ecommerce.entity.CategoryMetadataFieldValue;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.CategoryService;
@@ -11,6 +12,7 @@ import com.bootcamp.ecommerce.service.CategoryValidationService;
 import com.bootcamp.ecommerce.specifications.CategorySpecification;
 import com.bootcamp.ecommerce.specifications.MetadataFieldSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +30,7 @@ import static com.bootcamp.ecommerce.specifications.MetadataFieldSpecification.f
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CategoryServiceImpl implements CategoryService {
     private final CategoryValidationService categoryValidationService;
     private final CategoryRepository categoryRepository;
@@ -36,6 +39,8 @@ public class CategoryServiceImpl implements CategoryService {
     private final ProductRepository productRepository;
     private final MessageSource messageSource;
     private final ProductVariationRepository productVariationRepository;
+
+
     @Override
     @Transactional
     public ResponseDTO addCategory(CategoryRequestDTO dto, Locale locale) {
@@ -44,20 +49,23 @@ public class CategoryServiceImpl implements CategoryService {
         if (dto.getParentId() != null) {
 
             parent = categoryRepository.findById(dto.getParentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid parent category"));
+                    .orElseThrow(() -> {
+                        log.error("Parent category not found with id {}", dto.getParentId());
+                        return new ResourceNotFoundException("Invalid parent category");
+                    });
 
             if (productRepository.existsByCategoryIdAndIsDeletedFalse(parent.getId())) {
-                throw new IllegalStateException("Parent category is linked to active products");
+                throw new BadRequestException("Parent category is linked to active products");
             }
 
             if (!isNameUniqueInBranch(dto.getName(), parent)) {
-                throw new IllegalArgumentException("Category name must be unique in this branch");
+                throw new BadRequestException("Category name must be unique in this branch");
             }
 
         } else {
 
             if (categoryRepository.existsByNameIgnoreCaseAndParentCategoryIsNull(dto.getName())) {
-                throw new IllegalArgumentException("Category name already exists at root");
+                throw new BadRequestException("Category name already exists at root");
             }
         }
 
@@ -66,7 +74,9 @@ public class CategoryServiceImpl implements CategoryService {
         category.setParentCategory(parent);
 
        categoryRepository.save(category);
-       String msg=messageSource.getMessage("category.created.success",null,locale);
+        log.info("Category {} created successfully with id {}", dto.getName(), category.getId());
+
+        String msg=messageSource.getMessage("category.created.success",null,locale);
         return ResponseDTO.builder()
                 .status("SUCCESS")
                 .message(msg)
@@ -112,6 +122,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public  CategoryResponse getOneCategory(Long categoryId) {
 
+        log.info("Request received to fetch category with id {}", categoryId);
+
         Category category = categoryRepository.findById(categoryId).orElseThrow(() ->
                         new ResourceNotFoundException("No category found with this id"));
 
@@ -119,8 +131,12 @@ public class CategoryServiceImpl implements CategoryService {
         List<BasicCategoryDTO> childCategories = getChildCategories(category);
         List<MetadataDTO> metaFields = getMetaFields(category);
 
+        log.info("Category {} fetched successfully", categoryId);
+
         return new CategoryResponse(category.getId(), category.getName(), parentCategories, childCategories, metaFields);
     }
+
+
     private List<BasicCategoryDTO> getParentCategories(Category category) {
         List<BasicCategoryDTO> parentCategories = new ArrayList<>();
         if (category.getParentCategory() == null) {
@@ -161,9 +177,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     public Page<CategoryResponse> getAllCategories(RequestParams params) {
 
-        if (params.getMax() <= 0) {
-            throw new IllegalArgumentException("Max must be greater than 0");
-        }
+        log.info("Fetching category list with params: {}", params);
 
         Specification<Category> specification = CategorySpecification.filter(params.getFilters());
 
@@ -175,8 +189,11 @@ public class CategoryServiceImpl implements CategoryService {
         int pageNumber = params.getOffset() / params.getMax();
 
         Pageable pageable = PageRequest.of(pageNumber, params.getMax(), sort);
+        log.debug("Pagination applied - pageNumber: {}, pageSize: {}, sort: {} {}", pageNumber, params.getMax(), params.getSortBy(), direction);
 
         Page<Category> categoryPage = categoryRepository.findAll(specification, pageable);
+
+        log.info("Fetched {} categories", categoryPage.getTotalElements());
 
         return categoryPage.map(this::mapToCategoryResponse);
     }
@@ -200,6 +217,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     @Override
     public void addMetadataToCategory(AddCategoryMetadataRequest request) {
+        log.info("Request received to add metadata to category {}", request.getCategoryId());
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
@@ -207,13 +225,12 @@ public class CategoryServiceImpl implements CategoryService {
         for (CategoryMetadataFieldValueRequest dto : request.getFields()) {
 
             CategoryMetadataField metadataField = categoryMetadataFieldRepository.findById(dto.getMetadataFieldId())
-                            .orElseThrow(() ->
-                                    new ResourceNotFoundException("Metadata field not found"));
+                            .orElseThrow(() -> new ResourceNotFoundException("Metadata field not found"));
 
             String valuesString = dto.getValues().trim();
 
             if (valuesString.isEmpty()) {
-                throw new IllegalArgumentException("At least one value must be provided");
+                throw new BadRequestException("At least one value must be provided");
             }
 
             List<String> values = Arrays.stream(valuesString.split(","))
@@ -222,25 +239,26 @@ public class CategoryServiceImpl implements CategoryService {
                     .toList();
 
             if (values.isEmpty()) {
-                throw new IllegalArgumentException("Invalid values format");
+                throw new BadRequestException("Invalid values format");
             }
 
             Set<String> uniqueValues = new LinkedHashSet<>(values);
 
             if (uniqueValues.size() != values.size()) {
-                throw new IllegalArgumentException("Values must be unique within list");
+                log.warn("Duplicate values detected in metadata field {}", dto.getMetadataFieldId());
+                throw new BadRequestException("Values must be unique within list");
             }
 
-            boolean exists =
-                    categoryMetadataFieldValueRepository.findByCategoryIdAndCategoryMetadataFieldId(
+            boolean exists = categoryMetadataFieldValueRepository.findByCategoryIdAndCategoryMetadataFieldId(
                                     request.getCategoryId(),
                                     dto.getMetadataFieldId()
                             )
                             .isPresent();
 
             if (exists) {
-                throw new IllegalArgumentException(
-                        "Metadata field already assigned to this category");
+                log.warn("Metadata field {} already assigned to category {}", dto.getMetadataFieldId(), request.getCategoryId());
+
+                throw new BadRequestException("Metadata field already assigned to this category");
             }
 
             CategoryMetadataFieldValue entity = new CategoryMetadataFieldValue();
@@ -249,6 +267,7 @@ public class CategoryServiceImpl implements CategoryService {
             entity.setValueList(String.join(",", uniqueValues));
 
             categoryMetadataFieldValueRepository.save(entity);
+            log.info("Metadata field {} added to category {} with values {}",   dto.getMetadataFieldId(), request.getCategoryId(), uniqueValues);
         }
     }
 
@@ -258,11 +277,13 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void updateMetadataValues(AddCategoryMetadataRequest request) {
 
+        log.info("Request received to update metadata values for category {}", request.getCategoryId());
+
         for (CategoryMetadataFieldValueRequest dto : request.getFields()) {
+            log.debug("Updating metadata field {} for category {}", dto.getMetadataFieldId(), request.getCategoryId());
 
             CategoryMetadataFieldValue entity = categoryMetadataFieldValueRepository.findByCategoryIdAndCategoryMetadataFieldId(request.getCategoryId(), dto.getMetadataFieldId())
-                            .orElseThrow(() ->
-                                    new ResourceNotFoundException("Metadata not mapped to category"));
+                            .orElseThrow(() -> new ResourceNotFoundException("Metadata not mapped to category"));
 
             Set<String> existingSet = new HashSet<>();
 
@@ -285,38 +306,42 @@ public class CategoryServiceImpl implements CategoryService {
             entity.setValueList(String.join(",", existingSet));
 
             categoryMetadataFieldValueRepository.save(entity);
+            log.info("Metadata field {} updated for category {} with values {}", dto.getMetadataFieldId(), request.getCategoryId(), existingSet);
         }
     }
 
     @Override
     @Transactional
     public void updateCategory(BasicCategoryDTO dto) {
-
+        log.info("Request received to update category {}", dto.getId());
         Category category = categoryRepository.findById(dto.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid category ID"));
 
         String newName = dto.getName().trim();
+        log.debug("Updating category {} with new name '{}'", dto.getId(), newName);
 
         Category parent = category.getParentCategory();
 
         if (parent != null) {
 
             if (!isNameUniqueInBranch(newName, parent)) {
-                throw new IllegalArgumentException("Category name must be unique in this branch");
+                log.warn("Duplicate category name '{}' in branch {}", newName, parent.getId());
+                throw new BadRequestException("Category name must be unique in this branch");
             }
 
         } else {
-
             boolean exists = categoryRepository .existsByNameIgnoreCaseAndParentCategoryIsNullAndIdNot(newName, category.getId());
 
             if (exists) {
-                throw new IllegalArgumentException("Category name already exists at root");
+                log.warn("Duplicate root category name '{}'", newName);
+                throw new BadRequestException("Category name already exists at root");
             }
         }
 
         category.setName(newName);
 
         categoryRepository.save(category);
+        log.info("Category {} updated successfully with new name '{}'", dto.getId(), newName);
 
     }
 
@@ -356,21 +381,21 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional(readOnly = true)
     @Override
     public List<CategoryResponse> getCategoriesAsCustomer(Long categoryId) {
+        log.info("Customer requested categories for parentId {}", categoryId);
 
         List<Category> categories;
 
         if (categoryId == null) {
-
             categories = categoryRepository.findByParentCategoryIsNull();
-
         } else {
-
+            log.debug("Fetching child categories for parentId {}", categoryId);
             Category parent = categoryRepository.findById(categoryId)
                     .orElseThrow(() -> new ResourceNotFoundException("Invalid categoryId"));
 
             categories = categoryRepository.findByParentCategory(parent);
         }
 
+        log.info("Fetched {} categories for parentId {}", categories.size(), categoryId);
         return categories.stream()
                 .map(this::mapToDTO)
                 .toList();
@@ -385,7 +410,10 @@ public class CategoryServiceImpl implements CategoryService {
                 .build();
     }
 
+    @Override
     public FilterResponse getFilterData(Long categoryId) {
+
+        log.info("Request received to fetch filter data for category {}", categoryId);
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -396,10 +424,13 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(Category::getId)
                 .toList();
 
+        log.debug("Total descendant categories found: {}", categoryIds.size());
 
         Map<String, List<String>> metadataFields = new HashMap<>();
 
         List<CategoryMetadataFieldValue> values = categoryMetadataFieldValueRepository.findByCategoryIds(categoryIds);
+
+        log.debug("Metadata field values fetched: {}", values.size());
 
         for (CategoryMetadataFieldValue value : values) {
 
@@ -432,6 +463,7 @@ public class CategoryServiceImpl implements CategoryService {
             }
         }
 
+        log.info("Filter data prepared for category {} -> brands: {}, minPrice: {}, maxPrice: {}", categoryId, brands.size(), minPrice, maxPrice);
         return new FilterResponse(metadataFields, brands, minPrice, maxPrice);
     }
 

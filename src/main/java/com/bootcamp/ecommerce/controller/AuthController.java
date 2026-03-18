@@ -37,9 +37,9 @@ public class AuthController {
                             .build());
         }
 
-        String refreshToken = authorizationHeader.substring(7);
+        String token = authorizationHeader.substring(7);
 
-        ResponseDTO response = authService.logout(refreshToken);
+        ResponseDTO response = authService.logout(token);
 
         return ResponseEntity.ok(response);
     }

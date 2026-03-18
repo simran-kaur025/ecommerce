@@ -4,12 +4,16 @@ import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.*;
 import com.bootcamp.ecommerce.enums.OrderState;
 import com.bootcamp.ecommerce.enums.PaymentMethod;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
+import com.bootcamp.ecommerce.exceptionalHandler.InsufficientStockException;
+import com.bootcamp.ecommerce.exceptionalHandler.ProductInactiveException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.OrderService;
 import com.bootcamp.ecommerce.specifications.OrderSpecifications;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +34,7 @@ import static com.bootcamp.ecommerce.enums.OrderState.ORDER_PLACED;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final UserRepository userRepository;
@@ -48,21 +53,22 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse placeOrderForCurrentUser(PlaceOrderRequest request, Locale locale) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Place order request received from user: {}", email);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Address address = addressRepository.findById(request.getAddressId())
-                .orElseThrow(() -> new RuntimeException("Address not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
         if (!address.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Address does not belong to user");
+            throw new BadRequestException("Address does not belong to user");
         }
 
         List<Cart> cartItems = cartRepository.findByCustomerAndIsWishlistItemFalse(user);
 
         if (cartItems.isEmpty())
-            throw new RuntimeException("Cart is empty");
+            throw new BadRequestException("Cart is empty");
 
         double totalAmount = 0.0;
 
@@ -71,13 +77,14 @@ public class OrderServiceImpl implements OrderService {
             ProductVariation variation = cart.getProductVariation();
 
             if (!variation.getIsActive() || variation.getProduct().getIsDeleted())
-                throw new RuntimeException("Invalid product variation");
+                throw new ProductInactiveException("Invalid product variation");
 
             if (variation.getQuantity_available() < cart.getQuantity())
-                throw new RuntimeException("Insufficient stock");
+                throw new InsufficientStockException("Insufficient stock");
 
             totalAmount += variation.getPrice() * cart.getQuantity();
         }
+        log.info("Total order amount for user {} calculated as {}", email, totalAmount);
 
         Order order = new Order();
         order.setCustomer(user);
@@ -91,6 +98,7 @@ public class OrderServiceImpl implements OrderService {
         order.setCustomerAddressLabel(address.getLabel());
 
         order = orderRepository.save(order);
+        log.info("Order {} created for user {}", order.getId(), email);
 
         for (Cart cart : cartItems) {
 
@@ -115,11 +123,13 @@ public class OrderServiceImpl implements OrderService {
             status.setTransitionDate(LocalDateTime.now());
 
             orderStatusRepository.save(status);
+            log.info("Added OrderProduct {} to Order {} for user {}", item.getId(), order.getId(), email);
         }
 
         cartRepository.deleteAll(cartItems);
         String msg=messageSource.getMessage("order.success",null,locale);
-        return new OrderResponse("Order placed successfully", order.getId());
+        log.info("Order {} placed successfully for user {}", order.getId(), email);
+        return new OrderResponse(msg, order.getId());
     }
 
     @Transactional
@@ -127,15 +137,16 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse placePartialOrder(PartialOrderRequest request) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Partial order request received from user: {}", email);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Address address = addressRepository.findById(request.getAddressId())
-                .orElseThrow(() -> new RuntimeException("Address not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
         if (!address.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Address does not belong to user");
+            throw new BadRequestException("Address does not belong to user");
         }
 
         List<Cart> cartItems = cartRepository.findByCustomerAndIsWishlistItemFalse(user);
@@ -152,18 +163,19 @@ public class OrderServiceImpl implements OrderService {
 
             Cart cart = cartMap.get(variationId);
             if (cart == null)
-                throw new RuntimeException("Item not found in cart");
+                throw new BadRequestException("Item not found in cart");
 
             ProductVariation variation = cart.getProductVariation();
 
             if (!variation.getIsActive() || variation.getProduct().getIsDeleted())
-                throw new RuntimeException("Invalid variation");
+                throw new ProductInactiveException("Invalid variation");
 
             if (variation.getQuantity_available() < cart.getQuantity())
-                throw new RuntimeException("Insufficient stock");
+                throw new InsufficientStockException("Insufficient stock");
 
             totalAmount += variation.getPrice() * cart.getQuantity();
         }
+        log.info("Total amount for partial order for user {} calculated as {}", email, totalAmount);
 
         Order order = new Order();
         order.setCustomer(user);
@@ -177,6 +189,7 @@ public class OrderServiceImpl implements OrderService {
         order.setCustomerAddressLabel(address.getLabel());
 
         order = orderRepository.save(order);
+        log.info("Partial Order {} created for user {}", order.getId(), email);
 
         for (Long variationId : request.getProductVariationIds()) {
 
@@ -206,34 +219,38 @@ public class OrderServiceImpl implements OrderService {
             orderStatusRepository.save(status);
 
             cartRepository.delete(cart);
+            log.info("Processed and removed ProductVariation {} from cart for user {}", variation.getId(), email);
         }
-
+        log.info("Partial order {} placed successfully for user {}", order.getId(), email);
         return new OrderResponse("Order placed successfully", order.getId());
     }
+
+
     @Transactional
     @Override
     public OrderResponse directOrder(OrderRequest request) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Direct order request received from user: {}", email);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         ProductVariation variation = productVariationRepository.findById(request.getProductVariationId())
-                .orElseThrow(() -> new RuntimeException("Invalid variation"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid variation"));
 
         Address address = addressRepository.findById(request.getAddressId())
-                .orElseThrow(() -> new RuntimeException("Address not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
         if (!address.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Address does not belong to user");
+            throw new BadRequestException("Address does not belong to user");
         }
 
         if (!variation.getIsActive() || variation.getProduct().getIsDeleted())
-            throw new RuntimeException("Product not available");
+            throw new ProductInactiveException("Product not available");
 
         if (variation.getQuantity_available() < request.getQuantity())
-            throw new RuntimeException("Insufficient stock");
+            throw new InsufficientStockException("Insufficient stock");
 
         double totalAmount = variation.getPrice() * request.getQuantity();
 
@@ -253,6 +270,7 @@ public class OrderServiceImpl implements OrderService {
         order.setCustomerAddressLabel(address.getLabel());
 
         order = orderRepository.save(order);
+        log.info("Direct Order {} created for user {}", order.getId(), email);
 
         OrderProduct item = new OrderProduct();
         item.setOrder(order);
@@ -260,6 +278,7 @@ public class OrderServiceImpl implements OrderService {
         item.setQuantity(request.getQuantity());
         item.setPrice(variation.getPrice());
         item.setCurrentStatus(ORDER_PLACED);
+        log.info("OrderProduct {} added to Order {} for user {}", item.getId(), order.getId(), email);
 
         orderProductRepository.save(item);
         OrderStatus status = new OrderStatus();
@@ -269,6 +288,7 @@ public class OrderServiceImpl implements OrderService {
         status.setTransitionDate(LocalDateTime.now());
 
         orderStatusRepository.save(status);
+        log.info("Direct order {} placed successfully for user {}", order.getId(), email);
 
         return new OrderResponse("Order placed successfully", order.getId());
     }
@@ -277,14 +297,14 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public void cancelOrder(Long orderProductId) {
 
-        String email = SecurityContextHolder.getContext()
-                .getAuthentication().getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Cancel order request received from user: {} for OrderProduct {}", email, orderProductId);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         OrderProduct orderItem = orderProductRepository.findById(orderProductId)
-                .orElseThrow(() -> new RuntimeException("Order item not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
 
         Order order = orderItem.getOrder();
 
@@ -306,11 +326,13 @@ public class OrderServiceImpl implements OrderService {
         cancelStatus.setTransitionDate(LocalDateTime.now());
 
         orderStatusRepository.save(cancelStatus);
+        log.info("OrderProduct {} status updated to CANCELLED for user {}", orderProductId, email);
 
         ProductVariation variation = orderItem.getProductVariation();
         variation.setQuantity_available(variation.getQuantity_available() + orderItem.getQuantity());
 
         productVariationRepository.save(variation);
+        log.info("OrderProduct {} successfully cancelled for user {}", orderProductId, email);
     }
 
     @Transactional
@@ -318,25 +340,26 @@ public class OrderServiceImpl implements OrderService {
     public void returnOrder(Long orderProductId) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Return order request received from user: {} for OrderProduct {}", email, orderProductId);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         OrderProduct orderProduct = orderProductRepository.findById(orderProductId)
-                .orElseThrow(() -> new RuntimeException("Order product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order product not found"));
 
         if (!orderProduct.getOrder().getCustomer().getId().equals(user.getId())) {
-            throw new RuntimeException("Order does not belong to user");
+            throw new BadRequestException("Order does not belong to user");
         }
 
         OrderStatus latest = orderStatusRepository.findTopByOrderProductIdOrderByTransitionDateDesc(orderProductId);
 
         if (latest == null) {
-            throw new RuntimeException("No order status found for this product");
+            throw new ResourceNotFoundException("No order status found for this product");
         }
 
         if (latest.getToStatus() != OrderState.DELIVERED) {
-            throw new RuntimeException("Return allowed only for delivered orders");
+            throw new BadRequestException("Return allowed only for delivered orders");
         }
 
         OrderStatus returnStatus = new OrderStatus();
@@ -346,6 +369,7 @@ public class OrderServiceImpl implements OrderService {
         returnStatus.setTransitionDate(LocalDateTime.now());
 
         orderStatusRepository.save(returnStatus);
+        log.info("Return requested for OrderProduct {} by user {}", orderProductId, email);
     }
 
     @Override
@@ -353,12 +377,14 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponseDTO viewMyOrder(Long orderId) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("View order request received from user: {} for Order {}", email, orderId);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Order order = orderRepository.findByIdAndCustomerId(orderId, user.getId())
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        log.info("Order {} fetched successfully for user {}", orderId, email);
 
         return toDto(order);
     }
@@ -391,6 +417,7 @@ public class OrderServiceImpl implements OrderService {
     public Page<OrderResponseDTO> listMyOrders(RequestParams requestParams) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("List orders request received from user: {}", email);
 
         Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
@@ -411,7 +438,7 @@ public class OrderServiceImpl implements OrderService {
 
 
         Page<Order> orders = orderRepository.findAll(specification, pageable);
-
+        log.info("Fetched {} orders for user {}", orders.getNumberOfElements(), email);
         return orders.map(this::toDto);
 
     }
@@ -422,16 +449,16 @@ public class OrderServiceImpl implements OrderService {
     public Page<OrderResponseDTO> listOrdersOfMyProducts(RequestParams requestParams) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("List orders of seller's products request received from user: {}", email);
 
-        User seller = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Seller not found"));
+        User seller = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Seller not found"));
 
         Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
         filters.put("sellerEmail", email);
         Specification<Order> specification = OrderSpecifications.extract(filters);
 
-        Sort.Direction direction = Sort.Direction
-                .fromOptionalString(requestParams.getOrder())
+        Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder())
                 .orElse(Sort.Direction.ASC);
 
         int pageNumber = requestParams.getOffset() / requestParams.getMax();
@@ -443,19 +470,18 @@ public class OrderServiceImpl implements OrderService {
         );
 
         Page<Order> orders = orderRepository.findAll(specification, pageable);
+        log.info("Fetched {} orders for seller {}", orders.getNumberOfElements(), email);
 
         return orders.map(this::toDto);
 
     }
 
-
     public Page<OrderResponseDTO> getAllOrdersAsAdmin(RequestParams requestParams) {
-
+        log.info("Admin request received to list all orders");
         Map<String, String> filters = new HashMap<>(requestParams.getFilters());
         Specification<Order> specification = OrderSpecifications.extract(filters);
 
-        Sort.Direction direction = Sort.Direction
-                .fromOptionalString(requestParams.getOrder())
+        Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder())
                 .orElse(Sort.Direction.ASC);
 
         int pageNumber = requestParams.getOffset() / requestParams.getMax();
@@ -463,6 +489,7 @@ public class OrderServiceImpl implements OrderService {
         Pageable pageable = PageRequest.of(pageNumber, requestParams.getMax(), Sort.by(direction, requestParams.getSortBy()));
 
         Page<Order> orders = orderRepository.findAll(specification, pageable);
+        log.info("Admin fetched {} orders", orders.getNumberOfElements());
 
         return orders.map(this::toDto);
     }
@@ -490,6 +517,57 @@ public class OrderServiceImpl implements OrderService {
                 order.getDateCreated(),
                 products
         );
+    }
+
+    @Transactional
+    @Override
+    public void updateOrderStatus(UpdateOrderStatusRequest request, UserDetails userDetails) {
+
+        log.info("Update order status request received for orderProductId: {}", request.getOrderProductId());
+        OrderProduct orderProduct = orderProductRepository
+                .findById(request.getOrderProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        String role = userDetails.getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        if (role.equals("ROLE_SELLER")) {
+
+            String sellerEmail = userDetails.getUsername();
+
+            String productSeller = orderProduct.getProductVariation()
+                    .getProduct()
+                    .getCreatedBy();
+
+            if (!sellerEmail.equals(productSeller)) {
+                throw new RuntimeException("Seller cannot update this order");
+            }
+        }
+
+        OrderState currentStatus = orderProduct.getCurrentStatus();
+        OrderState nextStatus = request.getToStatus();
+        log.info("Current order status: {}, Requested status: {}", currentStatus, nextStatus);
+
+        if (!OrderState.isValidTransition(currentStatus, nextStatus)) {
+            throw new RuntimeException("Invalid status transition");
+        }
+
+
+        OrderStatus history = new OrderStatus();
+
+        history.setOrderProduct(orderProduct);
+        history.setFromStatus(currentStatus);
+        history.setToStatus(nextStatus);
+
+        orderStatusRepository.save(history);
+
+        orderProduct.setCurrentStatus(nextStatus);
+
+        orderProductRepository.save(orderProduct);
+        log.info("Order status updated successfully for orderProductId {} from {} to {}",
+                request.getOrderProductId(), currentStatus, nextStatus);
     }
 
     @Override
@@ -521,54 +599,6 @@ public class OrderServiceImpl implements OrderService {
         for (Map.Entry<Seller, List<OrderProduct>> entry : itemsBySeller.entrySet()) {
             emailService.sendPendingOrdersReminder(entry.getKey(), entry.getValue());
         }
-    }
-
-
-    @Transactional
-    @Override
-    public void updateOrderStatus(UpdateOrderStatusRequest request, UserDetails userDetails) {
-
-        OrderProduct orderProduct = orderProductRepository
-                .findById(request.getOrderProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-
-        String role = userDetails.getAuthorities()
-                .iterator()
-                .next()
-                .getAuthority();
-
-        if (role.equals("ROLE_SELLER")) {
-
-            String sellerEmail = userDetails.getUsername();
-
-            String productSeller = orderProduct.getProductVariation()
-                    .getProduct()
-                    .getCreatedBy();
-
-            if (!sellerEmail.equals(productSeller)) {
-                throw new RuntimeException("Seller cannot update this order");
-            }
-        }
-
-        OrderState currentStatus = orderProduct.getCurrentStatus();
-        OrderState nextStatus = request.getToStatus();
-
-        if (!OrderState.isValidTransition(currentStatus, nextStatus)) {
-            throw new RuntimeException("Invalid status transition");
-        }
-
-
-        OrderStatus history = new OrderStatus();
-
-        history.setOrderProduct(orderProduct);
-        history.setFromStatus(currentStatus);
-        history.setToStatus(nextStatus);
-
-        orderStatusRepository.save(history);
-
-        orderProduct.setCurrentStatus(nextStatus);
-
-        orderProductRepository.save(orderProduct);
     }
 
 }
