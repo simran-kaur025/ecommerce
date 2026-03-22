@@ -5,8 +5,8 @@ import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.entity.Customer;
 import com.bootcamp.ecommerce.entity.Seller;
 import com.bootcamp.ecommerce.entity.User;
-import com.bootcamp.ecommerce.exceptionalHandler.InvalidOperationException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
+import com.bootcamp.ecommerce.repository.AddressRepository;
 import com.bootcamp.ecommerce.repository.CustomerRepository;
 import com.bootcamp.ecommerce.repository.SellerRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
@@ -17,8 +17,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -30,11 +32,12 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final CustomerRepository customerRepository;
     private final SellerRepository sellerRepository;
     private final UserRepository userRepository;
+    private final AddressRepository addressRepository;
 
     private final EmailService emailService;
 
     @Override
-    public CustomerListResponseDTO getAllCustomers(int pageSize,int offSet, String customSort,String email) {
+    public ResponseDTO getAllCustomers(int pageSize,int offSet, String customSort,String email) {
 
         Map<String,String> sortMap = Map.of(
                 "email", "user.email",
@@ -52,9 +55,6 @@ public class AdminUserServiceImpl implements AdminUserService {
         } else {
             userPage = customerRepository.findAll(pageable);
         }
-        if (userPage.isEmpty()) {
-            throw new ResourceNotFoundException("No customers found");
-        }
 
         List<CustomerResponse> customers =
                 userPage.getContent().stream()
@@ -66,16 +66,22 @@ public class AdminUserServiceImpl implements AdminUserService {
                         ))
                         .toList();
 
-        return new CustomerListResponseDTO(
+        CustomerListResponseDTO customerListResponse = new CustomerListResponseDTO(
                 customers,
                 userPage.getTotalElements(),
                 userPage.getTotalPages(),
                 userPage.getNumber()
         );
+
+        return ResponseDTO.builder()
+                .status(Constant.SUCCESS)
+                .message(customers.isEmpty() ? "No customers found" : "Customers retrieved successfully")
+                .data(customerListResponse)
+                .build();
     }
 
     @Override
-    public SellerListResponseDTO getAllSellers(int pageSize,int offSet, String customSort,String email) {
+    public ResponseDTO getAllSellers(int pageSize,int offSet, String customSort,String email) {
 
         Map<String,String> sortMap = Map.of(
                 "email", "user.email",
@@ -95,38 +101,71 @@ public class AdminUserServiceImpl implements AdminUserService {
             sellerPage = sellerRepository.findAll(pageable);
         }
 
-        if (sellerPage.isEmpty()) {
-            throw new ResourceNotFoundException("No Sellers found");
-        }
-        List<SellerResponse> sellers =
-                sellerPage.getContent().stream()
-                        .map(seller -> new SellerResponse(
-                                seller.getUser().getId(),
-                                seller.getUser().getFirstName() + " " + seller.getUser().getLastName(),
-                                seller.getUser().getEmail(),
-                                seller.getUser().getIsActive(),
-                                seller.getCompanyName(),
-                                seller.getCompanyContact()
-                        ))
-                        .toList();
 
+        List<SellerResponse> sellers = sellerPage.getContent().stream()
+                .map(seller -> {
+                    AddressDTO addressDTO = addressRepository.findByUser(seller.getUser())
+                            .stream()
+                            .findFirst()
+                            .map(addr -> new AddressDTO(
+                                    addr.getAddressLine(),
+                                    addr.getCity(),
+                                    addr.getState(),
+                                    addr.getCountry(),
+                                    addr.getZipCode(),
+                                    addr.getLabel()
+                            ))
+                            .orElse(null);
 
-        return new SellerListResponseDTO(
+                    return new SellerResponse(
+                            seller.getUser().getId(),
+                            seller.getUser().getFirstName() + " " + seller.getUser().getLastName(),
+                            seller.getUser().getEmail(),
+                            seller.getUser().getIsActive(),
+                            seller.getCompanyName(),
+                            seller.getCompanyContact(),
+                            addressDTO
+                    );
+                })
+                .toList();
+
+        SellerListResponseDTO sellerListResponse = new SellerListResponseDTO(
                 sellers,
                 sellerPage.getTotalElements(),
                 sellerPage.getTotalPages(),
                 sellerPage.getNumber()
         );
+
+
+        return ResponseDTO.builder()
+                .status(Constant.SUCCESS)
+                .message(sellers.isEmpty() ? "No sellers found" : "Sellers retrieved successfully")
+                .data(sellerListResponse)
+                .build();
     }
 
     @Override
     public ResponseDTO activateUser(Long userId) {
 
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
+
+        if (currentUser.getId().equals(userId)) {
+            return ResponseDTO.builder()
+                    .status(Constant.SUCCESS)
+                    .message("Admin account already activated")
+                    .build();
+        }
+
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
 
         if (Boolean.TRUE.equals(user.getIsActive())) {
-            throw new InvalidOperationException("User account is already activated");
+            return ResponseDTO.builder()
+                    .status(Constant.SUCCESS)
+                    .message("User account is already activated")
+                    .build();
         }
 
         user.setIsActive(true);
@@ -144,10 +183,24 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     public ResponseDTO deactivateUser(Long userId) {
 
+        String currentUserEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
+
+        if (currentUser.getId().equals(userId)) {
+            return ResponseDTO.builder()
+                    .status(Constant.SUCCESS)
+                    .message("Admin cannot deactivate their own account")
+                    .build();
+        }
+
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         if (!Boolean.TRUE.equals(user.getIsActive())) {
-            throw new InvalidOperationException("User account is already deactivated");
+            return ResponseDTO.builder()
+                    .status(Constant.SUCCESS)
+                    .message("User account is already deactivated")
+                    .build();
         }
 
         user.setIsActive(false);

@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "category_metadata_fields")
+@Table(name = "category_metadata_field")
 @Getter
 @Setter
 @RequiredArgsConstructor

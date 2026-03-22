@@ -48,6 +48,7 @@ public class CreateAdmin implements CommandLineRunner {
         admin.setFirstName("Simran");
         admin.setLastName("Kaur");
         admin.setPassword(passwordEncoder.encode(adminPassword));
+        admin.setInvalidAttemptCount(0);
         admin.setIsActive(true);
         admin.setIsDeleted(false);
         admin.setIsLocked(false);

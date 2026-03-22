@@ -7,7 +7,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "activation_tokens")
+@Table(name = "activation_token")
 @Getter
 @Setter
 public class ActivationToken extends Auditable {

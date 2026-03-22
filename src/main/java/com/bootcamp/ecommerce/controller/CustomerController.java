@@ -40,12 +40,7 @@ public class CustomerController {
 
         ResponseDTO addressDTO = customerProfileService.getMyAddress();
 
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status(Constant.SUCCESS)
-                        .data(addressDTO)
-                        .build()
-        );
+        return ResponseEntity.ok(addressDTO);
 
     }
 

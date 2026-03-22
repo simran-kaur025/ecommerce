@@ -10,21 +10,21 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 
+@Repository
 public interface ProductVariationRepository extends JpaRepository<ProductVariation, Long>, JpaSpecificationExecutor<ProductVariation> {
-    Page<ProductVariation> findByProduct_Id(Long productId, Pageable pageable);
 
-    Page<ProductVariation> findByProduct_IdAndMetadataContainingIgnoreCase(Long productId, String metadata, Pageable pageable);
     List<ProductVariation> findByProduct(Product product);
     Page<ProductVariation>  findAll(Specification specification, Pageable pageable);
    List<ProductVariation>findByProductAndIsActiveTrue(Product product);
     @Query(value = """
         SELECT MIN(v.price), MAX(v.price)
-        FROM product_variations v
-        JOIN products p ON v.product_id = p.id
+        FROM product_variation v
+        JOIN product p ON v.product_id = p.id
         WHERE p.category_id IN (:categoryIds)
         """, nativeQuery = true)
     Object[] findMinMaxPriceByCategories(@Param("categoryIds") List<Long> categoryIds);

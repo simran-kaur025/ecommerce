@@ -7,7 +7,7 @@ import java.util.Date;
 
 
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_token")
 @Getter
 @Setter
 public class RefreshToken {

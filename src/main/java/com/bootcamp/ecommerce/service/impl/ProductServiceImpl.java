@@ -2,6 +2,7 @@ package com.bootcamp.ecommerce.service.impl;
 
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.*;
+import com.bootcamp.ecommerce.exceptionalHandler.AccessDeniedException;
 import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
 import com.bootcamp.ecommerce.exceptionalHandler.ProductInactiveException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
@@ -20,7 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,7 +107,7 @@ public class ProductServiceImpl implements ProductService {
                     .getName();
 
             if (!product.getCreatedBy().equals(email)) {
-                throw new AccessDeniedException("You are not authorized to update this product");
+                throw new AccessDeniedException("You are not authorized to update this product. This product does not belong to you.");
             }
             log.info("Product {} fetched successfully by user {}", productId, email);
             return mapToProductResponse(product);
@@ -165,7 +165,7 @@ public class ProductServiceImpl implements ProductService {
         Map<String, String> filters = new HashMap<>(requestParams.getFilters());
         filters.put("sellerEmail", email);
 
-        Specification<Product> specification = ProductSpecifications.extract(filters);
+        Specification<Product> specification = ProductSpecifications.extract(filters, false);
 
         Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder())
                 .orElse(Sort.Direction.ASC);
@@ -188,9 +188,9 @@ public class ProductServiceImpl implements ProductService {
         return new PageResponse<>(
                 products,
                 productPage.getTotalElements(),
+                productPage.getTotalPages(),
                 productPage.getNumber(),
-                productPage.getSize(),
-                productPage.getTotalPages()
+                productPage.getSize()
         );
     }
 
@@ -217,7 +217,7 @@ public class ProductServiceImpl implements ProductService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         if (!product.getCreatedBy().equals(email)) {
-            throw new AccessDeniedException("You are not authorized to update this product");
+            throw new AccessDeniedException("You are not authorized to update this product. This product does not belong to you");
         }
 
         product.setIsDeleted(true);
@@ -327,7 +327,7 @@ public class ProductServiceImpl implements ProductService {
 
         filters.put("categoryIds", leafCategoryIds.toString());
 
-        Specification<Product> specification = ProductSpecifications.extract(filters);
+        Specification<Product> specification = ProductSpecifications.extract(filters,true);
 
         Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder()).orElse(Sort.Direction.ASC);
 
@@ -424,7 +424,7 @@ public class ProductServiceImpl implements ProductService {
 
         filters.put("categoryId", product.getCategory().getId().toString());
 
-        Specification<Product> specification = ProductSpecifications.extract(filters)
+        Specification<Product> specification = ProductSpecifications.extract(filters,true)
                         .and((root, query, cb) ->
                                 cb.notEqual(root.get("id"), productId));
 
@@ -474,7 +474,7 @@ public class ProductServiceImpl implements ProductService {
 
         Map<String, String> filters = new HashMap<>(requestParams.getFilters());
 
-        Specification<Product> specification = ProductSpecifications.extract(filters);
+        Specification<Product> specification = ProductSpecifications.extract(filters,false);
 
         Sort.Direction direction = Sort.Direction.fromOptionalString(requestParams.getOrder())
                         .orElse(Sort.Direction.ASC);
@@ -511,16 +511,20 @@ public class ProductServiceImpl implements ProductService {
 
     @Transactional
     @Override
-    public void deactivateProduct(Long productId) {
+    public ResponseDTO deactivateProduct(Long productId) {
 
         Product product = productRepository.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        if (!Boolean.TRUE.equals(product.getIsActive())) {
-            throw new BadRequestException("Product already inactive");
+        if (Boolean.TRUE.equals(product.getIsDeleted())) {
+           throw new ProductInactiveException("Cannot deactivate deleted product");
         }
 
-        if (Boolean.TRUE.equals(product.getIsDeleted())) {
-            throw new BadRequestException("Product is deleted");
+        if (!Boolean.TRUE.equals(product.getIsActive())) {
+            log.info("Product {} already DEactive", productId);
+            return ResponseDTO.builder()
+                    .status("SUCCESS")
+                    .message("Product already deactivated")
+                    .build();
         }
 
         product.setIsActive(false);
@@ -530,23 +534,32 @@ public class ProductServiceImpl implements ProductService {
         emailService.sendProductDeactivatedEmail(product.getCreatedBy(),product);
 
         log.info("Product {} deactivated", productId);
+
+        return ResponseDTO.builder()
+                .status("SUCCESS")
+                .message("Product deactivated successfully")
+                .build();
     }
 
 
 
     @Transactional
     @Override
-    public void activateProduct(Long productId) {
+    public ResponseDTO activateProduct(Long productId) {
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        if (Boolean.TRUE.equals(product.getIsActive())) {
-            throw new BadRequestException("Product already active");
+        if (Boolean.TRUE.equals(product.getIsDeleted())) {
+            throw new ProductInactiveException("Cannot activate deleted product");
         }
 
-        if (Boolean.TRUE.equals(product.getIsDeleted())) {
-            throw new BadRequestException("Cannot activate deleted product");
+        if (Boolean.TRUE.equals(product.getIsActive())) {
+            log.info("Product {} already active", productId);
+            return ResponseDTO.builder()
+                    .status("SUCCESS")
+                    .message("Product already active")
+                    .build();
         }
 
         product.setIsActive(true);
@@ -556,6 +569,12 @@ public class ProductServiceImpl implements ProductService {
          emailService.sendProductActivatedEmail(product.getCreatedBy(),product);
 
         log.info("Product {} activated", productId);
+
+            return ResponseDTO.builder()
+                    .status("SUCCESS")
+                    .message("Product activated successfully")
+                    .build();
+
     }
 
 

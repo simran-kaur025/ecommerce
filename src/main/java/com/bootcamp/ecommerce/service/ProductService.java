@@ -18,6 +18,6 @@ public interface ProductService {
 
     ProductDetailResponseDTO viewProductAsAdmin(Long productId);
     PageResponse<ProductDetailResponseDTO>viewAllProductsAsAdmin(RequestParams params);
-    void deactivateProduct(Long productId);
-    void activateProduct(Long productId);
+    ResponseDTO deactivateProduct(Long productId);
+    ResponseDTO activateProduct(Long productId);
 }

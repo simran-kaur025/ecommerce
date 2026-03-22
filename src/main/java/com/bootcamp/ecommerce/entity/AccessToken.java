@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.util.Date;
 
 @Entity
-@Table(name = "access_tokens")
+@Table(name = "access_token")
 @Getter
 @Setter
 public class AccessToken {

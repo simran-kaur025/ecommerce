@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @Entity
-@Table(name = "product_variations")
+@Table(name = "product_variation")
 @Getter
 @Setter
 public class ProductVariation extends Auditable{

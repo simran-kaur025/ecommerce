@@ -11,18 +11,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Set;
 
+@Repository
 public interface ProductRepository extends JpaRepository<Product, Long> , JpaSpecificationExecutor<Product> {
     boolean existsByCategoryId(Long categoryId);
 
     boolean existsByNameIgnoreCaseAndBrandIgnoreCaseAndCategoryAndSeller(String name, String brand, Category category, Seller seller);
-
-    Page<Product> findBySeller_User_EmailAndIsDeletedFalse(String email,Pageable pageable);
-
-    Page<Product> findBySeller_User_EmailAndIsDeletedFalseAndNameContainingIgnoreCase(String email, String name, Pageable pageable);
 
     boolean existsByNameIgnoreCaseAndBrandIgnoreCaseAndCategory_IdAndSeller_Id(String name, String brandName, Long categoryId,Long sellerId);
 
@@ -33,7 +31,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> , JpaSpe
 
     @Query(value = """
         SELECT DISTINCT p.brand
-        FROM products p
+        FROM product p
         WHERE p.category_id IN (:categoryIds)
         """,
             nativeQuery = true)

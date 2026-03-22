@@ -50,46 +50,15 @@ public class CategoryController {
                         .build()
         );
     }
+    @GetMapping("/all/admin/")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseDTO> viewAllCategories(@RequestParam Map<String, String> allParams) {
 
-    @GetMapping
-    public ResponseEntity<ResponseDTO> getAllCategories(@RequestParam(required = false) Map<String, String> allParams, @RequestParam(required = false) Long categoryId, @AuthenticationPrincipal UserDetails userDetails) {
+        RequestParams requestParams = extractor.extract(allParams);
 
-        if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ResponseDTO.builder()
-                            .status("FAIL")
-                            .message("Authentication required")
-                            .build());
-        }
+        Page<CategoryResponse> pageData = categoryService.getAllCategories(requestParams);
 
-        String role = userDetails.getAuthorities().stream()
-                .findFirst()
-                .map(Object::toString)
-                .orElse("");
-
-        Object response;
-
-        switch (role) {
-            case "ROLE_ADMIN":
-                RequestParams requestParams = extractor.extract(allParams != null ? allParams : Map.of());
-                response = categoryService.getAllCategories(requestParams);
-                break;
-
-            case "ROLE_SELLER":
-                response = categoryService.getAllCategoriesAsSeller();
-                break;
-
-            case "ROLE_CUSTOMER":
-                response = categoryService.getCategoriesAsCustomer(categoryId);
-                break;
-
-            default:
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ResponseDTO.builder()
-                                .status("FAIL")
-                                .message("Unauthorized role")
-                                .build());
-        }
+        PageResponse<CategoryResponse> response = new PageResponse<>(pageData);
 
         return ResponseEntity.ok(
                 ResponseDTO.builder()
@@ -98,6 +67,55 @@ public class CategoryController {
                         .build()
         );
     }
+//    @GetMapping
+//    @PreAuthorize("hasAnyRole('ADMIN','SELLER','CUSTOMER')")
+//    public ResponseEntity<ResponseDTO> getAllCategories(@RequestParam Map<String, String> allParams, @RequestParam(required = false) Long categoryId , @AuthenticationPrincipal UserDetails userDetails) {
+//
+//        if (userDetails == null) {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                    .body(ResponseDTO.builder()
+//                            .status("FAIL")
+//                            .message("Authentication required")
+//                            .build());
+//        }
+//
+//        String role = userDetails.getAuthorities().stream()
+//                .findFirst()
+//                .map(Object::toString)
+//                .orElse("");
+//
+//        Object response;
+//
+//        switch (role) {
+//            case "ROLE_ADMIN":
+//                RequestParams requestParams = extractor.extract(allParams != null ? allParams : Map.of());
+//                Page<CategoryResponse> pageData = categoryService.getAllCategories(requestParams);
+//                 response = new PageResponse<>(pageData);
+//                break;
+//
+//            case "ROLE_SELLER":
+//                response = categoryService.getAllCategoriesAsSeller();
+//                break;
+//
+//            case "ROLE_CUSTOMER":
+//                response = categoryService.getCategoriesAsCustomer(categoryId);
+//                break;
+//
+//            default:
+//                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                        .body(ResponseDTO.builder()
+//                                .status("FAIL")
+//                                .message("Unauthorized role")
+//                                .build());
+//        }
+//
+//        return ResponseEntity.ok(
+//                ResponseDTO.builder()
+//                        .status(Constant.SUCCESS)
+//                        .data(response)
+//                        .build()
+//        );
+//    }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/metadata-values")
@@ -138,6 +156,36 @@ public class CategoryController {
                         .build()
         );
     }
+
+    @GetMapping("/all/seller")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<ResponseDTO> getAllCategories(){
+
+        List<LeafCategoryResponse> response = categoryService.getAllCategoriesAsSeller();
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .data(response)
+                        .build()
+        );
+    }
+
+
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @GetMapping("/all/customer")
+    public ResponseEntity<ResponseDTO> getCategoriesAsCustomer(@RequestParam(required = false) Long categoryId) {
+
+        List<CategoryResponse> data = categoryService.getCategoriesAsCustomer(categoryId);
+
+        return ResponseEntity.ok(
+                ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .data(data)
+                        .build()
+        );
+    }
+
 
     @GetMapping("/{categoryId}/filters")
     public ResponseEntity<FilterResponse> getFilterData(@PathVariable Long categoryId) {

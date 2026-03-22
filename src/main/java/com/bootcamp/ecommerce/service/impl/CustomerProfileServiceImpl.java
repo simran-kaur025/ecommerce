@@ -1,7 +1,7 @@
 package com.bootcamp.ecommerce.service.impl;
 
 
-import com.bootcamp.ecommerce.CustomUserDetails;
+import com.bootcamp.ecommerce.utils.CustomUserDetails;
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.constant.Constant;
 import com.bootcamp.ecommerce.entity.Address;
@@ -16,9 +16,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -75,8 +75,12 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                 .toList();
 
         if (addresses.isEmpty()) {
-        throw new ResourceNotFoundException("No address found for this user");
-    }
+            return ResponseDTO.builder()
+                    .status(Constant.SUCCESS)
+                    .message("No address found for this user")
+                    .data(Collections.emptyList())
+                    .build();
+        }
 
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)

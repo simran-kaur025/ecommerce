@@ -5,9 +5,11 @@ import com.bootcamp.ecommerce.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+@Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     Optional<RefreshToken> findByToken(String token);
@@ -16,15 +18,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     Optional<RefreshToken> findByUserAndStatus(User user, Integer status);
 
     @Modifying
-    @Query(
-            value = """
-        UPDATE refresh_tokens
+    @Query(value = """
+        UPDATE refresh_token
         SET status = 2
         WHERE user_id = :userId
         AND status = 1
-    """,
-            nativeQuery = true
-    )
+    """, nativeQuery = true)
     void revokeAllByUser(Long userId);
 }
 

@@ -10,6 +10,10 @@ import lombok.Setter;
 public class SellerRequestDTO {
 
     @Email(message = "Email must be valid")
+    @Pattern(
+            regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
+            message = "Email must contain a valid domain (e.g., gmail.com)"
+    )
     @NotBlank(message = "Email is mandatory")
     private String email;
 
@@ -22,15 +26,15 @@ public class SellerRequestDTO {
 
     @NotBlank(message = "First name is mandatory")
     @Size(min = 2, message = "First name must be at least 2 characters")
-    @Pattern(regexp = "^[A-Za-z\\p{L} ]+$", message = "First name must contain only letters")
+    @Pattern(regexp = "^[A-Za-z\\p{L}]+$", message = "First name must contain only letters")
     private String firstName;
 
-    @Pattern(regexp = "^[A-Za-z\\p{L} ]+$", message = "Middle name must contain only letters")
+    @Pattern(regexp = "^[A-Za-z\\p{L}]+$", message = "Middle name must contain only letters")
     private String middleName;
 
     @NotBlank(message = "Last name is mandatory")
     @Size(min = 2, message = "Last name must be at least 2 characters")
-    @Pattern(regexp = "^[A-Za-z\\p{L} ]+$", message = "Last name must contain only letters")
+    @Pattern(regexp = "^[A-Za-z\\p{L}]+$", message = "Last name must contain only letters")
     private String lastName;
 
     @NotBlank(message = "GST number is mandatory")

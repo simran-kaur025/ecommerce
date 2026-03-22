@@ -77,4 +77,9 @@ public class EmailConstants {
 
     public static final String PENDING_ORDERS_MESSAGE_SUFFIX = "\n\nPlease review them in the dashboard.";
 
+    public static final String ACCOUNT_LOCKED_SUBJECT = "Account Locked";
+
+    public static final String ACCOUNT_LOCKED_MESSAGE = "Account Locked";
+
+
 }

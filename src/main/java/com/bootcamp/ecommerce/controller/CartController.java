@@ -19,7 +19,7 @@ public class CartController {
     private final CartService cartService;
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @PostMapping("/add/product")
+    @PostMapping
     public ResponseEntity<String> addToCart(@Valid @RequestBody CartRequest request) {
         cartService.addToCart(request);
         return ResponseEntity.ok("Product added to cart successfully");

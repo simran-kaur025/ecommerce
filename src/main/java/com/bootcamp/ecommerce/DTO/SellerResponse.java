@@ -13,4 +13,5 @@ public class SellerResponse {
     private boolean active;
     private String companyName;
     private String companyContact;
+    private AddressDTO addressDTO;
 }

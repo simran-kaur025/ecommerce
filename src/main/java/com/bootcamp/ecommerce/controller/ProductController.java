@@ -89,15 +89,9 @@ public class ProductController {
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/deactivate/{id}")
     public ResponseEntity<ResponseDTO> deactivateProduct(@PathVariable Long id) {
-        productService.deactivateProduct(id);
+       ResponseDTO responseDTO= productService.deactivateProduct(id);
 
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status("SUCCESS")
-                        .message("Product deactivated successfully")
-                        .data(null)
-                        .build()
-        );
+        return ResponseEntity.ok(responseDTO);
     }
 
 
@@ -105,15 +99,9 @@ public class ProductController {
     @PutMapping("/activate/{id}")
     public ResponseEntity<ResponseDTO> activateProduct(@PathVariable Long id) {
 
-        productService.activateProduct(id);
+      ResponseDTO responseDTO=  productService.activateProduct(id);
 
-        return ResponseEntity.ok(
-                ResponseDTO.builder()
-                        .status("SUCCESS")
-                        .message("Product activated successfully")
-                        .data(null)
-                        .build()
-        );
+        return ResponseEntity.ok(responseDTO);
     }
 
 
@@ -161,7 +149,7 @@ public class ProductController {
 
 
     @GetMapping
-    public ResponseEntity<ResponseDTO> getProducts(@RequestParam(required = false) Map<String, String> allParams, @RequestParam(required = false) Long categoryId, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ResponseDTO> getProducts(@RequestParam Map<String, String> allParams, @RequestParam(required = false) Long categoryId, @AuthenticationPrincipal UserDetails userDetails) {
 
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)

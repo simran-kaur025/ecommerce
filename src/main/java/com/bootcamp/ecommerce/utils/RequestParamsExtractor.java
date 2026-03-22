@@ -2,6 +2,7 @@ package com.bootcamp.ecommerce.utils;
 
 
 import com.bootcamp.ecommerce.DTO.RequestParams;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -37,7 +38,7 @@ public class RequestParamsExtractor {
             String[] keyValue = param.split(":");
 
             if (keyValue.length != 2) {
-                throw new IllegalArgumentException("Invalid query format. Use key:value");
+                throw new BadRequestException("Invalid query format. Use key:value");
             }
 
             String key = keyValue[0].trim();
@@ -46,11 +47,11 @@ public class RequestParamsExtractor {
             if (key.equalsIgnoreCase("name")) {
 
                 if (value.isBlank()) {
-                    throw new IllegalArgumentException("Name must not be blank.");
+                    throw new BadRequestException("Name must not be blank.");
                 }
 
                 if (!value.matches("^[A-Za-z ]+$")) {
-                    throw new IllegalArgumentException(
+                    throw new BadRequestException(
                             "Name must contain only alphabets and spaces.");
                 }
             }

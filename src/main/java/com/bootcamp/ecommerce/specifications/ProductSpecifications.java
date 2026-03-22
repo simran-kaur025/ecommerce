@@ -14,15 +14,17 @@ import java.util.Map;
 
 public class ProductSpecifications {
 
-    public static Specification<Product> extract(Map<String, String> filters) {
+    public static Specification<Product> extract(Map<String, String> filters, boolean onlyActive) {
 
         return (root, query, cb) -> {
 
 
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(cb.isFalse(root.get("isDeleted")));
-//            predicates.add(cb.isTrue(root.get("isActive")));
+            if (onlyActive) {
+                predicates.add(cb.isTrue(root.get("isActive")));
+                predicates.add(cb.isFalse(root.get("isDeleted")));
+            }
 
             if (filters.containsKey("categoryIds")) {
 

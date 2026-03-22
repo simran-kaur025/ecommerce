@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "order_entry")
 @Getter
 @Setter
 public class Order extends Auditable {

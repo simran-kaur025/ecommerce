@@ -1,5 +1,8 @@
-package com.bootcamp.ecommerce;
+package com.bootcamp.ecommerce.utils;
 
+import com.bootcamp.ecommerce.DTO.ResponseDTO;
+import com.bootcamp.ecommerce.constant.Constant;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,17 +14,20 @@ import java.io.IOException;
 
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
 
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        String message = (String) request.getAttribute("exception");
-        if(message == null){
-            message = "Unauthorized user";
-        }
 
-        response.getWriter()
-                .write("{\"error\": \"" + message + "\"}");
+        ResponseDTO responseDTO = ResponseDTO.builder()
+                .status(Constant.FAIL)
+                .message("Unauthorized user: Authentication is required")
+                .build();
+
+        response.getWriter().write(objectMapper.writeValueAsString(responseDTO));
     }
 }

@@ -2,6 +2,7 @@ package com.bootcamp.ecommerce.controller;
 
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.constant.Constant;
+import com.bootcamp.ecommerce.exceptionalHandler.UnauthorizedException;
 import com.bootcamp.ecommerce.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -25,16 +26,18 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ResponseDTO> logout(HttpServletRequest request) {
+
         String authorizationHeader = request.getHeader("Authorization");
+
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(ResponseDTO.builder()
-                            .status("FAIL")
-                            .message("Refresh token is missing")
-                            .build());
+            throw new UnauthorizedException("Access token is missing or invalid");
         }
 
         String token = authorizationHeader.substring(7);

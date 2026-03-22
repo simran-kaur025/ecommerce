@@ -9,7 +9,9 @@ import org.springframework.cglib.core.Local;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -63,41 +65,61 @@ public class OrderController {
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/view/{orderId}")
+    @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponseDTO> viewMyOrder(@PathVariable Long orderId) {
         OrderResponseDTO response = orderService.viewMyOrder(orderId);
         return ResponseEntity.ok(response);
     }
 
-    @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/view/all/orders")
-    public ResponseEntity<Page<OrderResponseDTO>> listMyOrders(@RequestParam Map<String ,String> allParams) {
-        RequestParams requestParams = extractor.extract(allParams);
-        Page<OrderResponseDTO> response = orderService.listMyOrders(requestParams);
+//    @PreAuthorize("hasRole('CUSTOMER')")
+//    @GetMapping
+//    public ResponseEntity<Page<OrderResponseDTO>> listMyOrders(@RequestParam Map<String ,String> allParams) {
+//        RequestParams requestParams = extractor.extract(allParams);
+//        Page<OrderResponseDTO> response = orderService.listMyOrders(requestParams);
+//
+//        return ResponseEntity.ok(response);
+//    }
+//
+//    @PreAuthorize("hasRole('SELLER')")
+//    @GetMapping
+//    public ResponseEntity<Page<OrderResponseDTO>> listOrdersOfMyProducts(@RequestParam Map<String ,String> allParams) {
+//        RequestParams requestParams = extractor.extract(allParams);
+//
+//        Page<OrderResponseDTO> response = orderService.listOrdersOfMyProducts(requestParams);
+//
+//        return ResponseEntity.ok(response);
+//    }
+//
+//    @PreAuthorize("hasRole('ADMIN')")
+//    @GetMapping
+//    public ResponseEntity<Page<OrderResponseDTO>>  getAllOrders(@RequestParam Map<String ,String> allParams) {
+//        RequestParams requestParams = extractor.extract(allParams);
+//        Page<OrderResponseDTO> response = orderService.getAllOrdersAsAdmin(requestParams);
+//        return ResponseEntity.ok(response);
+//    }
 
-        return ResponseEntity.ok(response);
-    }
+    @PreAuthorize("hasAnyRole('CUSTOMER','SELLER','ADMIN')")
+    @GetMapping
+    public ResponseEntity<Page<OrderResponseDTO>> getOrders(
+            @RequestParam Map<String, String> allParams) {
 
+        RequestParams params = extractor.extract(allParams);
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-    @PreAuthorize("hasRole('SELLER')")
-    @GetMapping("/seller/view/all/orders")
-    public ResponseEntity<Page<OrderResponseDTO>> listOrdersOfMyProducts(@RequestParam Map<String ,String> allParams) {
-        RequestParams requestParams = extractor.extract(allParams);
+        if (auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
 
-        Page<OrderResponseDTO> response = orderService.listOrdersOfMyProducts(requestParams);
+            return ResponseEntity.ok(orderService.getAllOrdersAsAdmin(params));
+        }
 
-        return ResponseEntity.ok(response);
-    }
+        if (auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SELLER"))) {
 
+            return ResponseEntity.ok(orderService.listOrdersOfMyProducts(params));
+        }
 
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/admin/get/all/orders")
-    public ResponseEntity<Page<OrderResponseDTO>>  getAllOrders(@RequestParam Map<String ,String> allParams) {
-        RequestParams requestParams = extractor.extract(allParams);
-        Page<OrderResponseDTO> response = orderService.getAllOrdersAsAdmin(requestParams);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(orderService.listMyOrders(params));
     }
 
 

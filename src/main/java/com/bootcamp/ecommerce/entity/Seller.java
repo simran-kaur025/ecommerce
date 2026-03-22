@@ -6,7 +6,7 @@ import lombok.Setter;
 
 
 @Entity
-@Table(name = "sellers")
+@Table(name = "seller")
 @Getter
 @Setter
 public class Seller extends Auditable {

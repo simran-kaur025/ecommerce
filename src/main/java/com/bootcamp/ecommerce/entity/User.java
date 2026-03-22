@@ -10,7 +10,7 @@ import java.util.List;
 
 
 @Entity
-@Table(name = "users")
+@Table(name = "user")
 @Getter
 @Setter
 @Builder
@@ -39,7 +39,8 @@ public class User extends Auditable {
     private Boolean isLocked = false;
     private Boolean isExpired = false;
 
-    private Integer invalidAttemptCount;
+    @Column(nullable = false)
+    private Integer invalidAttemptCount=0;
 
     @Column(name = "password_update_date")
     private LocalDateTime passwordUpdateDate;

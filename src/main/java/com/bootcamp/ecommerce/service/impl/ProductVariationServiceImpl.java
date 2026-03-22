@@ -4,7 +4,11 @@ import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.CategoryMetadataFieldValue;
 import com.bootcamp.ecommerce.entity.Product;
 import com.bootcamp.ecommerce.entity.ProductVariation;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
+import com.bootcamp.ecommerce.exceptionalHandler.ProductInactiveException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
+import com.bootcamp.ecommerce.exceptionalHandler.UnauthorizedException;
+import com.bootcamp.ecommerce.exceptionalHandler.AccessDeniedException;
 import com.bootcamp.ecommerce.repository.CategoryMetadataFieldValueRepository;
 import com.bootcamp.ecommerce.repository.ProductRepository;
 import com.bootcamp.ecommerce.repository.ProductVariationRepository;
@@ -17,7 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,25 +48,25 @@ public class ProductVariationServiceImpl implements ProductVariationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (!product.getCreatedBy().equals(email)) {
-            throw new IllegalArgumentException("Unauthorized product access");
+            throw new UnauthorizedException("Unauthorized product access");
         }
 
         if (!Boolean.TRUE.equals(product.getIsActive()) || Boolean.TRUE.equals(product.getIsDeleted())) {
-            throw new IllegalArgumentException("Product is not active or deleted");
+            throw new ProductInactiveException("Product is not active or deleted");
         }
 
         if (request.getQuantityAvailable() < 0) {
-            throw new IllegalArgumentException("Quantity cannot be negative");
+            throw new BadRequestException("Quantity cannot be negative");
         }
 
         if (request.getPrice() < 0) {
-            throw new IllegalArgumentException("Price cannot be negative");
+            throw new BadRequestException("Price cannot be negative");
         }
 
 
         Map<String, List<String>> metadata = request.getMetadata();
         if (metadata == null || metadata.isEmpty()) {
-            throw new IllegalArgumentException("Variation must have metadata");
+            throw new BadRequestException("Variation must have metadata");
         }
 
         List<CategoryMetadataFieldValue> allowedMeta = categoryMetadataFieldValueRepository.findByCategory(product.getCategory());
@@ -81,7 +84,7 @@ public class ProductVariationServiceImpl implements ProductVariationService {
             String field = entry.getKey().trim().toLowerCase();
 
             if (!allowedMap.containsKey(field)) {
-                throw new IllegalArgumentException("Invalid metadata field: " + entry.getKey());
+                throw new BadRequestException("Invalid metadata field: " + entry.getKey());
             }
 
             Set<String> allowedValues = allowedMap.get(field);
@@ -91,7 +94,7 @@ public class ProductVariationServiceImpl implements ProductVariationService {
                 String normalizedValue = value.trim().toLowerCase();
 
                 if (!allowedValues.contains(normalizedValue)) {
-                    throw new IllegalArgumentException(
+                    throw new BadRequestException(
                             "Invalid value '" + value + "' for field " + entry.getKey());
                 }
             }
@@ -113,11 +116,9 @@ public class ProductVariationServiceImpl implements ProductVariationService {
                     .collect(Collectors.toSet());
 
             if (!expectedKeys.equals(incomingKeys)) {
-                throw new IllegalArgumentException("All variations must have same metadata structure");
+                throw new BadRequestException("All variations must have same metadata structure");
             }
         }
-
-
 
 
         ProductVariation variation = new ProductVariation();
@@ -144,7 +145,7 @@ public class ProductVariationServiceImpl implements ProductVariationService {
         Product product = variation.getProduct();
 
         if (product.getIsDeleted()) {
-            throw new IllegalArgumentException("Product is deleted");
+            throw new ProductInactiveException("Product is deleted");
         }
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -191,7 +192,7 @@ public class ProductVariationServiceImpl implements ProductVariationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (product.getIsDeleted()) {
-            throw new IllegalArgumentException("Product is deleted");
+            throw new ProductInactiveException("Product is deleted");
         }
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -241,19 +242,19 @@ public class ProductVariationServiceImpl implements ProductVariationService {
         Product product = variation.getProduct();
 
         if (!product.getCreatedBy().equals(email)) {
-            throw new IllegalArgumentException("Access denied");
+            throw new UnauthorizedException("Access denied");
         }
 
         if (!product.getIsActive() || product.getIsDeleted()) {
-            throw new IllegalArgumentException("Product inactive or deleted");
+            throw new BadRequestException("Product inactive or deleted");
         }
 
         if (request.getQuantityAvailable() != null && request.getQuantityAvailable() < 0) {
-            throw new IllegalArgumentException("Quantity must be >= 0");
+            throw new BadRequestException("Quantity must be >= 0");
         }
 
         if (request.getPrice() != null && request.getPrice() < 0) {
-            throw new IllegalArgumentException("Price must be >= 0");
+            throw new BadRequestException("Price must be >= 0");
         }
 
         if (request.getMetadata() != null && !request.getMetadata().isEmpty()) {
@@ -306,13 +307,13 @@ public class ProductVariationServiceImpl implements ProductVariationService {
             List<String> values = entry.getValue();
 
             if (!allowedMap.containsKey(fieldName)) {
-                throw new IllegalArgumentException(
+                throw new BadRequestException(
                         "Invalid metadata field: " + fieldName);
             }
 
             for (String v : values) {
                 if (!allowedMap.get(fieldName).contains(v)) {
-                    throw new IllegalArgumentException(
+                    throw new BadRequestException(
                             "Invalid value " + v + " for field " + fieldName);
                 }
             }

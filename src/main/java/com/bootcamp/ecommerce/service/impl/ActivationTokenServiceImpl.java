@@ -3,9 +3,9 @@ package com.bootcamp.ecommerce.service.impl;
 import com.bootcamp.ecommerce.entity.ActivationToken;
 import com.bootcamp.ecommerce.entity.User;
 import com.bootcamp.ecommerce.repository.ActivationTokenRepository;
-import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.service.ActivationTokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +20,11 @@ import java.util.UUID;
 public class ActivationTokenServiceImpl implements ActivationTokenService {
 
     private final ActivationTokenRepository activationTokenRepository;
-    private final UserRepository userRepository;
 
-    private static final int TOKEN_VALID_HOURS = 3;
+
+    @Value("${password.activation.token.valid}")
+    private long tokenValid;
+
 
     @Override
     public ActivationToken createToken(User user) {
@@ -39,7 +41,7 @@ public class ActivationTokenServiceImpl implements ActivationTokenService {
         ActivationToken token = new ActivationToken();
         token.setToken(UUID.randomUUID().toString());
         token.setUser(user);
-        token.setExpiryTime(LocalDateTime.now().plusHours(TOKEN_VALID_HOURS));
+        token.setExpiryTime(LocalDateTime.now().plusHours(tokenValid));
 
         return activationTokenRepository.saveAndFlush(token);
     }

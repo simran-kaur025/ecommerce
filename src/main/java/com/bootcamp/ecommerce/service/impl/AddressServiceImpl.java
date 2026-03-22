@@ -3,6 +3,7 @@ package com.bootcamp.ecommerce.service.impl;
 import com.bootcamp.ecommerce.DTO.UpdateAddressRequestDTO;
 import com.bootcamp.ecommerce.entity.Address;
 import com.bootcamp.ecommerce.entity.User;
+import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
 import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
 import com.bootcamp.ecommerce.repository.AddressRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
@@ -48,7 +49,7 @@ public class AddressServiceImpl implements AddressService {
                 request.getCountry() == null &&
                 request.getLabel() == null) {
 
-            throw new IllegalArgumentException("At least one field must be provided for update");
+            throw new BadRequestException("At least one field must be provided for update");
         }
 
 

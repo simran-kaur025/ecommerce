@@ -78,7 +78,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ResponseDTO> handleInvalidOperation(
             InvalidOperationException ex) {
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ResponseDTO.builder()
                         .status(Constant.FAIL)
                         .message(ex.getMessage())
@@ -112,6 +112,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         .message(ex.getMessage())
                         .build());
     }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ResponseDTO> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -120,6 +121,62 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         .message(ex.getMessage())
                         .build());
     }
+
+    @ExceptionHandler(BadCredentialException.class)
+    public ResponseEntity<ResponseDTO> handleBadCredential(BadCredentialException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseDTO.builder()
+                        .status(Constant.FAIL)
+                        .message(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ResponseDTO> handleLockedException(LockedException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(ResponseDTO.builder()
+                        .status(Constant.FAIL)
+                        .message(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ResponseDTO> handleDisabledException(DisabledException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ResponseDTO.builder()
+                        .status(Constant.FAIL)
+                        .message(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ResponseDTO> handleAccessDeniedException(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ResponseDTO.builder()
+                        .status(Constant.FAIL)
+                        .message(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(ProductInactiveException.class)
+    public ResponseEntity<ResponseDTO> handleProductInactiveException(ProductInactiveException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ResponseDTO.builder()
+                        .status(Constant.FAIL)
+                        .message(ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ResponseDTO> handleInSufficientStockException(InsufficientStockException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ResponseDTO.builder()
+                        .status(Constant.FAIL)
+                        .message(ex.getMessage())
+                        .build());
+    }
+
+
 }
 
 

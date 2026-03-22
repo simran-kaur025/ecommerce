@@ -3,7 +3,7 @@ package com.bootcamp.ecommerce.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product_reviews")
+@Table(name = "product_review")
 public class ProductReview extends Auditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

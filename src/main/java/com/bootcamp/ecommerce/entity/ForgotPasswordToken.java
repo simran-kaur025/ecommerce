@@ -7,7 +7,7 @@ import lombok.Setter;
 import java.util.Date;
 
 @Entity
-@Table(name = "forgot_password_tokens")
+@Table(name = "forgot_password_token")
 @Getter
 @Setter
 public class ForgotPasswordToken {

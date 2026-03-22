@@ -4,10 +4,7 @@ import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.*;
 import com.bootcamp.ecommerce.enums.OrderState;
 import com.bootcamp.ecommerce.enums.PaymentMethod;
-import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
-import com.bootcamp.ecommerce.exceptionalHandler.InsufficientStockException;
-import com.bootcamp.ecommerce.exceptionalHandler.ProductInactiveException;
-import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
+import com.bootcamp.ecommerce.exceptionalHandler.*;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.OrderService;
@@ -62,7 +59,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
         if (!address.getUser().getId().equals(user.getId())) {
-            throw new BadRequestException("Address does not belong to user");
+            throw new AccessDeniedException("Address does not belong to user");
         }
 
         List<Cart> cartItems = cartRepository.findByCustomerAndIsWishlistItemFalse(user);
@@ -112,7 +109,7 @@ public class OrderServiceImpl implements OrderService {
             item.setOrder(order);
             item.setProductVariation(variation);
             item.setQuantity(cart.getQuantity());
-            item.setPrice(variation.getPrice() * cart.getQuantity());
+            item.setPrice(variation.getPrice());
             item.setCurrentStatus(ORDER_PLACED);
             orderProductRepository.save(item);
 
@@ -146,7 +143,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
         if (!address.getUser().getId().equals(user.getId())) {
-            throw new BadRequestException("Address does not belong to user");
+            throw new AccessDeniedException("Address does not belong to user");
         }
 
         List<Cart> cartItems = cartRepository.findByCustomerAndIsWishlistItemFalse(user);
@@ -205,7 +202,7 @@ public class OrderServiceImpl implements OrderService {
             item.setOrder(order);
             item.setProductVariation(variation);
             item.setQuantity(cart.getQuantity());
-            item.setPrice(variation.getPrice()* cart.getQuantity());
+            item.setPrice(variation.getPrice());
             item.setCurrentStatus(ORDER_PLACED);
 
             orderProductRepository.save(item);
@@ -243,7 +240,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
 
         if (!address.getUser().getId().equals(user.getId())) {
-            throw new BadRequestException("Address does not belong to user");
+            throw new AccessDeniedException("Address does not belong to user");
         }
 
         if (!variation.getIsActive() || variation.getProduct().getIsDeleted())
@@ -309,14 +306,14 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderItem.getOrder();
 
         if (!order.getCustomer().getId().equals(user.getId()))
-            throw new RuntimeException("Unauthorized cancellation");
+            throw new UnauthorizedException("Unauthorized cancellation");
 
         OrderState status = orderItem.getCurrentStatus();
 
         boolean cancellable = status == OrderState.ORDER_PLACED || status == OrderState.ORDER_CONFIRMED;
 
         if (!cancellable) {
-            throw new RuntimeException("Cannot cancel at this stage");
+            throw new InvalidOperationException("Cannot cancel at this stage");
         }
 
         OrderStatus cancelStatus = new OrderStatus();
@@ -349,7 +346,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order product not found"));
 
         if (!orderProduct.getOrder().getCustomer().getId().equals(user.getId())) {
-            throw new BadRequestException("Order does not belong to user");
+            throw new AccessDeniedException("Order does not belong to user");
         }
 
         OrderStatus latest = orderStatusRepository.findTopByOrderProductIdOrderByTransitionDateDesc(orderProductId);
@@ -359,7 +356,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         if (latest.getToStatus() != OrderState.DELIVERED) {
-            throw new BadRequestException("Return allowed only for delivered orders");
+            throw new InvalidOperationException("Return allowed only for delivered orders");
         }
 
         OrderStatus returnStatus = new OrderStatus();
@@ -542,7 +539,7 @@ public class OrderServiceImpl implements OrderService {
                     .getCreatedBy();
 
             if (!sellerEmail.equals(productSeller)) {
-                throw new RuntimeException("Seller cannot update this order");
+                throw new AccessDeniedException("Seller cannot update this order");
             }
         }
 
@@ -551,7 +548,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Current order status: {}, Requested status: {}", currentStatus, nextStatus);
 
         if (!OrderState.isValidTransition(currentStatus, nextStatus)) {
-            throw new RuntimeException("Invalid status transition");
+            throw new InvalidOperationException("Invalid status transition");
         }
 
 
@@ -574,8 +571,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public void notifyPendingOrders() {
 
-        List<OrderProduct> pendingItems =
-                orderProductRepository.findPendingSellerActionOrderProducts(ORDER_PLACED.name());
+        List<OrderProduct> pendingItems = orderProductRepository.findPendingSellerActionOrderProducts(ORDER_PLACED.name());
 
         if (pendingItems.isEmpty()) {
             return;

@@ -7,7 +7,7 @@ import lombok.Setter;
 import java.util.List;
 
 @Entity
-@Table(name="products")
+@Table(name="product")
 @Getter
 @Setter
 public class Product extends Auditable{

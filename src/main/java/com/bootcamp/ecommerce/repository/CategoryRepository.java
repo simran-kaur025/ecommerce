@@ -8,28 +8,25 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+
+@Repository
 public interface CategoryRepository extends JpaRepository<Category, Long>, JpaSpecificationExecutor<Category> {
     boolean existsByNameIgnoreCaseAndParentCategoryIsNull(String name);
 
-    boolean existsByNameIgnoreCaseAndParentCategoryId(String name, Long parentId);
-
     Optional<Category> findById(Long id);
     List<Category> findByParentCategory(Category category);
-    Page<Category> findByNameContainingIgnoreCase(String name, Pageable pageable);
+
     Page<Category> findAll(Specification specification,Pageable pageable);
 
     boolean existsByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCaseAndParentCategoryIsNullAndIdNot(String name, Long id);
 
-    boolean existsByNameIgnoreCaseAndParentCategoryIdAndIdNot(
-            String name,
-            Long parentId,
-            Long id
-    );
+
 
     List<Category> findByParentCategoryId(Long categoryId);
     boolean existsByNameIgnoreCaseAndParentCategory(String name, Category parent);

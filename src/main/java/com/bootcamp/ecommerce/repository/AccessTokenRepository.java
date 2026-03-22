@@ -5,15 +5,17 @@ import com.bootcamp.ecommerce.entity.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+@Repository
 public interface AccessTokenRepository extends JpaRepository<AccessToken, Long> {
     Optional<AccessToken> findByToken(String token);
     @Modifying
     @Query(
             value = """
-        UPDATE access_tokens
+        UPDATE access_token
         SET status = 2
         WHERE user_id = :userId
         AND status = 1

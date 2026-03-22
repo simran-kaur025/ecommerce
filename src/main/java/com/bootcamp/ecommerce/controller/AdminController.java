@@ -24,13 +24,7 @@ public class AdminController {
                                        @RequestParam(defaultValue = "id") String customSort,
                                        @RequestParam(required = false) String email) {
 
-        CustomerListResponseDTO data = adminUserService.getAllCustomers(pageSize,offSet,customSort,email);
-
-        return ResponseDTO.builder()
-                .status(Constant.SUCCESS)
-                .message("Customers fetched successfully")
-                .data(data)
-                .build();
+       return adminUserService.getAllCustomers(pageSize,offSet,customSort,email);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -40,16 +34,10 @@ public class AdminController {
                                      @RequestParam(defaultValue = "id") String customSort,
                                      @RequestParam(required = false) String email) {
 
-        SellerListResponseDTO data = adminUserService.getAllSellers(pageSize,offSet,customSort,email);
-
-        return ResponseDTO.builder()
-                .status(Constant.SUCCESS)
-                .message("Sellers fetched successfully")
-                .data(data)
-                .build();
+        return adminUserService.getAllSellers(pageSize,offSet,customSort,email);
     }
 
-    @PatchMapping("/{userId}/activate")
+    @PatchMapping("/activate/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseDTO activateUser(@PathVariable Long userId) {
 
@@ -58,7 +46,7 @@ public class AdminController {
     }
 
 
-    @PatchMapping("/{userId}/deactivate")
+    @PatchMapping("/deactivate/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseDTO deactivateUser(@PathVariable Long userId) {
 

@@ -6,6 +6,7 @@
     import com.bootcamp.ecommerce.DTO.UserValidationDTO;
     import com.bootcamp.ecommerce.constant.Constant;
     import com.bootcamp.ecommerce.entity.*;
+    import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
     import com.bootcamp.ecommerce.exceptionalHandler.InvalidOperationException;
     import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
     import com.bootcamp.ecommerce.exceptionalHandler.ValidationException;
@@ -63,7 +64,7 @@
             User user = createUser(requestDTO);
 
             Role role = roleRepository.findByAuthority("ROLE_CUSTOMER")
-                    .orElseThrow(() -> new RuntimeException("ROLE_CUSTOMER not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("ROLE_CUSTOMER not found"));
 
 
             UserRole userRole = new UserRole();
@@ -161,11 +162,9 @@
         public ResponseDTO activateAccount(String token) {
 
             ActivationToken activationToken = activationTokenRepository.findByToken(token)
-                            .orElseThrow(() -> {
-                                log.warn("Invalid activation token received");
-                                return new ResourceNotFoundException("Invalid activation token");
-                            }
-                            );
+                            .orElseThrow(() -> {log.warn("Invalid activation token received");
+                                return new BadRequestException("Invalid activation token");
+                            });
 
             if (activationToken.getExpiryTime().isBefore(LocalDateTime.now())) {
 
@@ -183,7 +182,10 @@
             }
 
             if (Boolean.TRUE.equals(activationToken.getUser().getIsActive())) {
-                throw new InvalidOperationException("Account is already activated");
+                return ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .message("Account is already activated")
+                        .build();
             }
 
             User user = activationToken.getUser();
@@ -209,7 +211,11 @@
 
             if (Boolean.TRUE.equals(user.getIsActive())) {
                 log.warn("Resend activation attempted for already active account");
-                throw new InvalidOperationException("Account is already activated");
+
+                return ResponseDTO.builder()
+                        .status(Constant.SUCCESS)
+                        .message("Account is already activated")
+                        .build();
             }
 
 

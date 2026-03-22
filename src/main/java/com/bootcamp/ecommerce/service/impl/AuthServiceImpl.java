@@ -1,6 +1,5 @@
 package com.bootcamp.ecommerce.service.impl;
 
-import com.bootcamp.ecommerce.CustomUserDetails;
 import com.bootcamp.ecommerce.DTO.ChangePasswordRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginRequestDTO;
 import com.bootcamp.ecommerce.DTO.LoginResponseDTO;
@@ -10,7 +9,9 @@ import com.bootcamp.ecommerce.entity.AccessToken;
 import com.bootcamp.ecommerce.entity.ForgotPasswordToken;
 import com.bootcamp.ecommerce.entity.RefreshToken;
 import com.bootcamp.ecommerce.entity.User;
-import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
+import com.bootcamp.ecommerce.exceptionalHandler.*;
+import com.bootcamp.ecommerce.exceptionalHandler.DisabledException;
+import com.bootcamp.ecommerce.exceptionalHandler.LockedException;
 import com.bootcamp.ecommerce.repository.AccessTokenRepository;
 import com.bootcamp.ecommerce.repository.ForgotPasswordTokenRepository;
 import com.bootcamp.ecommerce.repository.RefreshTokenRepository;
@@ -18,14 +19,14 @@ import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.service.AuthService;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.JwtTokenService;
+import com.bootcamp.ecommerce.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -43,15 +44,17 @@ import java.util.UUID;
 @Slf4j
 public class AuthServiceImpl implements AuthService {
 
-    private final AuthenticationManager authenticationManager;
     private final JwtTokenService jwtTokenService;
+    private final EmailService emailService;
+    private final TokenService tokenService;
+
+    private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AccessTokenRepository accessTokenRepository;
     private final UserRepository userRepository;
     private final ForgotPasswordTokenRepository forgotPasswordTokenRepository;
 
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
     private final MessageSource messageSource;
 
     @Value("${password.reset.token.expiry}")
@@ -59,25 +62,82 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
+    public LoginResponseDTO login(LoginRequestDTO request) {
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+
+        if (Boolean.TRUE.equals(user.getIsLocked())) {
+            throw new LockedException("Account locked due to multiple failed login attempts");
+        }
+
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new DisabledException("Account not activated");
+        }
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+
+            user.setInvalidAttemptCount(0);
+            userRepository.save(user);
+
+        } catch (AuthenticationException ex) {
+
+            int count = user.getInvalidAttemptCount() + 1;
+            user.setInvalidAttemptCount(count);
+
+            if (count >= 3) {
+                user.setIsLocked(true);
+                emailService.sendEmail(user.getEmail(), "Account Locked", "Your account is locked.");
+            }
+
+            userRepository.save(user);
+
+            throw new UnauthorizedException("Invalid email or password");
+        }
+
+        tokenService.revokeAllTokens(user.getId());
+
+        String accessToken = jwtTokenService.generateAccessToken(user);
+        String refreshToken = jwtTokenService.generateRefreshToken(user);
+
+        AccessToken accessTokenEntity = new AccessToken();
+        accessTokenEntity.setToken(accessToken);
+        accessTokenEntity.setUser(user);
+        accessTokenEntity.setStatus(1);
+        accessTokenEntity.setExpiryDate(jwtTokenService.getAccessTokenExpiryDate());
+
+        accessTokenRepository.save(accessTokenEntity);
+
+        RefreshToken refreshTokenEntity = new RefreshToken();
+        refreshTokenEntity.setToken(refreshToken);
+        refreshTokenEntity.setUser(user);
+        refreshTokenEntity.setStatus(1);
+        refreshTokenEntity.setExpiryDate(jwtTokenService.getRefreshTokenExpiryDate());
+
+        refreshTokenRepository.save(refreshTokenEntity);
+
+        return LoginResponseDTO.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+
+    @Override
     @Transactional
     public ResponseDTO logout(String accessTokenValue) {
 
-        AccessToken accessToken = accessTokenRepository
-                .findByToken(accessTokenValue).orElseThrow(() -> new RuntimeException("Invalid access token"));
+        AccessToken accessToken = accessTokenRepository.findByToken(accessTokenValue).orElseThrow(() -> new InvalidTokenException("Invalid access token"));
 
         if (!Integer.valueOf(1).equals(accessToken.getStatus())) {
             return ResponseDTO.builder()
-                    .status(Constant.FAIL)
-                    .message("Token already revoked or inactive")
+                    .status(Constant.SUCCESS)
+                    .message("Already Logged out")
                     .build();
         }
 
-        if (accessToken == null) {
-            return ResponseDTO.builder()
-                    .status(Constant.FAIL)
-                    .message("Invalid access token")
-                    .build();
-        }
 
         if (accessToken.getExpiryDate().before(new Date())) {
 
@@ -85,7 +145,7 @@ public class AuthServiceImpl implements AuthService {
                     accessToken.getUser().getId());
 
             return ResponseDTO.builder()
-                    .status(Constant.FAIL)
+                    .status(Constant.SUCCESS)
                     .message("Access token already expired")
                     .build();
         }
@@ -94,7 +154,7 @@ public class AuthServiceImpl implements AuthService {
 
         RefreshToken refreshToken = refreshTokenRepository
                 .findByUserAndStatus(user,1)
-                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Refresh token not found"));
 
         accessToken.setStatus(2);
         refreshToken.setStatus(2);
@@ -112,21 +172,24 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
+    @Transactional
     public ResponseDTO  refreshAccessToken(String refreshToken) {
 
         RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() ->
-                        new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (token.getExpiryDate().before(new Date())) {
 
             return ResponseDTO.builder()
-                    .status(Constant.FAIL)
+                    .status(Constant.SUCCESS)
                     .message("Refresh token expired")
                     .build();
         }
 
         User user = token.getUser();
+
+        accessTokenRepository.revokeAllByUser(user.getId());
+
         String newAccessTokenValue = jwtTokenService.generateAccessToken(user);
 
         AccessToken newAccessToken = new AccessToken();
@@ -140,7 +203,7 @@ public class AuthServiceImpl implements AuthService {
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)
                 .data(
-                        Map.of("accessToken", newAccessToken)
+                        Map.of("accessToken", newAccessTokenValue)
                 )
                 .build();
     }
@@ -150,7 +213,7 @@ public class AuthServiceImpl implements AuthService {
     public ResponseDTO forgotPassword(String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email does not exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Email does not exist"));
 
         if (!user.getIsActive()) {
             return ResponseDTO.builder()
@@ -189,7 +252,7 @@ public class AuthServiceImpl implements AuthService {
     public ResponseDTO resetPassword(String token, String password, String confirmPassword) {
 
         ForgotPasswordToken resetToken = forgotPasswordTokenRepository.findByToken(token)
-                        .orElseThrow(() -> new RuntimeException("Invalid token"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Invalid token"));
 
         if (resetToken.getExpiryDate().before(new Date())) {
             forgotPasswordTokenRepository.delete(resetToken);
@@ -206,9 +269,7 @@ public class AuthServiceImpl implements AuthService {
                     .build();
         }
         if (!isStrongPassword(password)) {
-            throw new BadRequestException(
-                    "Password must contain uppercase, lowercase, number, special character and be 8-15 characters long"
-            );
+            throw new BadRequestException("Password must contain uppercase, lowercase, number, special character and be 8-15 characters long");
         }
 
         User user = resetToken.getUser();
@@ -232,7 +293,7 @@ public class AuthServiceImpl implements AuthService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new BadRequestException("Old password is incorrect");
@@ -266,8 +327,6 @@ public class AuthServiceImpl implements AuthService {
                 "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,15}$"
         );
     }
-
-
 
 }
 

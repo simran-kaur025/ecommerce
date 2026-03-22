@@ -1,6 +1,6 @@
 package com.bootcamp.ecommerce.service.impl;
 
-import com.bootcamp.ecommerce.CustomUserDetails;
+import com.bootcamp.ecommerce.utils.CustomUserDetails;
 import com.bootcamp.ecommerce.entity.User;
 import com.bootcamp.ecommerce.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
