@@ -11,7 +11,7 @@ public class MessageProducer {
 
     @Value("${rabbitmq.queue.name}")
     private String queue;
-    @Value("${rabbitmq.exchnage.name}")
+    @Value("${rabbitmq.exchange.name}")
     private String exchange;
 
     @Value("${rabbitmq.routing.key}")

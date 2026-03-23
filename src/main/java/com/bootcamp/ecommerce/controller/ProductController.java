@@ -149,7 +149,7 @@ public class ProductController {
 
 
     @GetMapping
-    public ResponseEntity<ResponseDTO> getProducts(@RequestParam Map<String, String> allParams, @RequestParam(required = false) Long categoryId, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ResponseDTO> getProducts(@RequestParam Map<String, String> allParams, @AuthenticationPrincipal UserDetails userDetails) {
 
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -178,10 +178,10 @@ public class ProductController {
                 response = productService.getAllProducts(sellerParams);
                 break;
 
-            case "ROLE_CUSTOMER":
-                RequestParams customerParams = extractor.extract(allParams != null ? allParams : Map.of());
-                response = productService.getAllProductsAsCustomer(categoryId, customerParams);
-                break;
+//            case "ROLE_CUSTOMER":
+//                RequestParams customerParams = extractor.extract(allParams != null ? allParams : Map.of());
+//                response = productService.getAllProductsAsCustomer(categoryId, customerParams);
+//                break;
 
             default:
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -198,6 +198,22 @@ public class ProductController {
                         .data(response)
                         .build()
         );
+    }
+
+
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @GetMapping("/customer")
+    public ResponseEntity<ResponseDTO> getProducts(@RequestParam Long categoryId, @RequestParam Map<String,String> allParams) {
+        RequestParams requestParams = extractor.extract(allParams);
+        PageResponse<ProductDetailResponseDTO> response =  productService.getAllProductsAsCustomer(categoryId, requestParams);
+            return ResponseEntity.ok(
+                    ResponseDTO.builder()
+                            .status("SUCCESS")
+                            .message("Product fetched successfully")
+                            .data(response)
+                            .build()
+            );
+
     }
 
 }

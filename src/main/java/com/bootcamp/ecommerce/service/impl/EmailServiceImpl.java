@@ -31,6 +31,18 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
+    public void sendEmail(String to, String subject, String body) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(body);
+        message.setFrom(fromEmail);
+
+        mailSender.send(message);
+    }
+
+    @Async
+    @Override
     public void sendActivationEmail(String email, String token) {
         try {
             String activationLink = ACTIVATE_ACCOUNT_URL + token;
@@ -168,18 +180,6 @@ public class EmailServiceImpl implements EmailService {
     public void sendAccountDeactivatedEmail(String email) {
 
         sendEmail(email, ACCOUNT_DEACTIVATED_SUBJECT, ACCOUNT_DEACTIVATED_MESSAGE);
-    }
-
-    @Async
-    @Override
-    public void sendEmail(String to, String subject, String body) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        message.setFrom(fromEmail);
-
-        mailSender.send(message);
     }
 
 

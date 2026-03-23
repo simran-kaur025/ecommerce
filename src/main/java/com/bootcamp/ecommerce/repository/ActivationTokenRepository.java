@@ -15,6 +15,5 @@ public interface ActivationTokenRepository extends JpaRepository<ActivationToken
    void deleteByUser(User user);
    boolean existsByToken(String token);
    void deleteByToken(String token);
-   void deleteByExpiryTimeBefore(LocalDateTime time);
 }
 

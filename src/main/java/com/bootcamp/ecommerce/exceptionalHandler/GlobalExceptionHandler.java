@@ -122,14 +122,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         .build());
     }
 
-    @ExceptionHandler(BadCredentialException.class)
-    public ResponseEntity<ResponseDTO> handleBadCredential(BadCredentialException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ResponseDTO.builder()
-                        .status(Constant.FAIL)
-                        .message(ex.getMessage())
-                        .build());
-    }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ResponseDTO> handleLockedException(LockedException ex) {
@@ -160,7 +152,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ProductInactiveException.class)
     public ResponseEntity<ResponseDTO> handleProductInactiveException(ProductInactiveException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ResponseDTO.builder()
                         .status(Constant.FAIL)
                         .message(ex.getMessage())

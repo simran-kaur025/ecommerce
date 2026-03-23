@@ -50,7 +50,7 @@ public class CartServiceImpl implements CartService {
             throw new ProductInactiveException("Product variation not active");
 
         if (variation.getProduct().getIsDeleted())
-            throw new ResourceNotFoundException("Product deleted");
+            throw new ProductInactiveException("Product deleted");
 
         if (request.getQuantity() <= 0)
             throw new BadRequestException("Quantity must be greater than 0");

@@ -49,8 +49,7 @@ public class ActivationTokenServiceImpl implements ActivationTokenService {
     @Override
     public boolean validateToken(String token) {
 
-        Optional<ActivationToken> optionalToken =
-                activationTokenRepository.findByToken(token);
+        Optional<ActivationToken> optionalToken = activationTokenRepository.findByToken(token);
 
         if (optionalToken.isEmpty()) {
             return false;
@@ -66,11 +65,5 @@ public class ActivationTokenServiceImpl implements ActivationTokenService {
             activationTokenRepository.deleteByToken(token);
         }
     }
-
-    @Scheduled(fixedRate = 6 * 60 * 60 * 1000)
-    public void deleteExpiredTokens() {
-        activationTokenRepository.deleteByExpiryTimeBefore(LocalDateTime.now());
-    }
-
 }
 
