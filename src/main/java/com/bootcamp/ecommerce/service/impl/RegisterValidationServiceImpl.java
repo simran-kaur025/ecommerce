@@ -22,7 +22,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class RegisterValidationServiceImpl implements RegisterValidationService {
 
-    private  final UserRepository userRepository;
+    private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
     private final SellerRepository sellerRepository;
     private final UserRoleRepository userRoleRepository;

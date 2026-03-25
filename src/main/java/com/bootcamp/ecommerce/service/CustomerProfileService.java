@@ -9,6 +9,6 @@ public interface CustomerProfileService {
     CustomerProfileResponseDTO getMyProfile();
     ResponseDTO getMyAddress();
     void updateProfile(UpdateProfileRequestDTO request);
-    void addAddress(AddressDTO request);
+    ResponseDTO addAddress(AddressDTO request);
     void deleteAddress(Long addressId);
 }

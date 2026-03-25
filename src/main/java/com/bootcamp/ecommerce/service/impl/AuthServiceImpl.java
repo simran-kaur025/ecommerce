@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (!Boolean.TRUE.equals(user.getIsActive())) {
-            throw new DisabledException("Account not activated");
+            throw new UnauthorizedException("Account not activated");
         }
 
         try {

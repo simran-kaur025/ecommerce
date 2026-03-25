@@ -222,6 +222,10 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
+        if(!categoryRepository.findByParentCategory(category).isEmpty()){
+            throw new BadRequestException("Not A leaf Category");
+        }
+
         for (CategoryMetadataFieldValueRequest dto : request.getFields()) {
 
             CategoryMetadataField metadataField = categoryMetadataFieldRepository.findById(dto.getMetadataFieldId())

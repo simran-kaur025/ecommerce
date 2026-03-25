@@ -12,6 +12,7 @@ import com.bootcamp.ecommerce.repository.SellerRepository;
 import com.bootcamp.ecommerce.repository.UserRepository;
 import com.bootcamp.ecommerce.service.AdminUserService;
 import com.bootcamp.ecommerce.service.EmailService;
+import com.bootcamp.ecommerce.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +36,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final AddressRepository addressRepository;
 
     private final EmailService emailService;
+    private final TokenService tokenService;
 
     @Override
     public ResponseDTO getAllCustomers(int pageSize,int offSet, String customSort,String email) {
@@ -60,7 +62,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 userPage.getContent().stream()
                         .map(customer -> new CustomerResponse(
                                 customer.getUser().getId(),
-                                customer.getUser().getFirstName() + " " + customer.getUser().getLastName(),
+                                customer.getUser().getFirstName() + " " + customer.getUser().getMiddleName() + " " + customer.getUser().getLastName(),
                                 customer.getUser().getEmail(),
                                 customer.getUser().getIsActive()
                         ))
@@ -205,6 +207,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         user.setIsActive(false);
         userRepository.save(user);
+        tokenService.revokeAllTokens(user.getId());
         emailService.sendAccountDeactivatedEmail(user.getEmail());
         return ResponseDTO.builder()
                 .status(Constant.SUCCESS)

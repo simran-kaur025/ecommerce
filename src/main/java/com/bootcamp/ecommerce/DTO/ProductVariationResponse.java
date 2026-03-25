@@ -1,5 +1,6 @@
 package com.bootcamp.ecommerce.DTO;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 @Setter
 @RequiredArgsConstructor
 @AllArgsConstructor
+@JsonInclude(value = JsonInclude.Include.NON_NULL)
 public class ProductVariationResponse {
 
     private Long id;

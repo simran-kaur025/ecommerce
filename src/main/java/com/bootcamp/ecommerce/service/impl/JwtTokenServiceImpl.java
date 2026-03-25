@@ -1,7 +1,9 @@
 package com.bootcamp.ecommerce.service.impl;
 
 import com.bootcamp.ecommerce.entity.AccessToken;
+import com.bootcamp.ecommerce.entity.Role;
 import com.bootcamp.ecommerce.entity.User;
+import com.bootcamp.ecommerce.entity.UserRole;
 import com.bootcamp.ecommerce.repository.AccessTokenRepository;
 import com.bootcamp.ecommerce.service.JwtTokenService;
 import io.jsonwebtoken.Claims;
@@ -15,8 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import java.util.Date;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 @Service
@@ -37,7 +38,18 @@ public class JwtTokenServiceImpl implements JwtTokenService {
 
     @Override
     public String generateAccessToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+
+        List<String> roles = user.getUserRoles().stream()
+                .map(UserRole::getRole)
+                .map(Role::getAuthority)
+                .toList();
+
+        claims.put("roles", roles);
+
+
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(user.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiry))
@@ -53,7 +65,16 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @Override
     public String generateRefreshToken(User user) {
 
+        Map<String, Object> claims = new HashMap<>();
+
+        List<String> roles = user.getUserRoles().stream()
+                .map(UserRole::getRole)
+                .map(Role::getAuthority)
+                .toList();
+
+        claims.put("roles", roles);
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(user.getEmail())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + refreshTokenExpiry))

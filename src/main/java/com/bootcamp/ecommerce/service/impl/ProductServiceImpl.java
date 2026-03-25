@@ -2,10 +2,7 @@ package com.bootcamp.ecommerce.service.impl;
 
 import com.bootcamp.ecommerce.DTO.*;
 import com.bootcamp.ecommerce.entity.*;
-import com.bootcamp.ecommerce.exceptionalHandler.AccessDeniedException;
-import com.bootcamp.ecommerce.exceptionalHandler.BadRequestException;
-import com.bootcamp.ecommerce.exceptionalHandler.ProductInactiveException;
-import com.bootcamp.ecommerce.exceptionalHandler.ResourceNotFoundException;
+import com.bootcamp.ecommerce.exceptionalHandler.*;
 import com.bootcamp.ecommerce.repository.*;
 import com.bootcamp.ecommerce.service.EmailService;
 import com.bootcamp.ecommerce.service.ProductService;
@@ -65,7 +62,7 @@ public class ProductServiceImpl implements ProductService {
         if (exists) {
             log.warn("Duplicate product attempt: name={}, brand={}, seller={}", request.getName(), request.getBrand(), seller.getId());
 
-            throw new BadRequestException("Product already exists for this seller, brand and category");
+            throw new InvalidOperationException("Product already exists for this seller, brand and category");
         }
 
         Product product = new Product();
@@ -398,6 +395,7 @@ public class ProductServiceImpl implements ProductService {
                 .brand(product.getBrand())
                 .description(product.getDescription())
                 .category(categorySummary)
+                .isActive(product.getIsActive())
                 .variations(variationResponses)
                 .build();
     }
@@ -409,6 +407,7 @@ public class ProductServiceImpl implements ProductService {
                 .price(variation.getPrice())
                 .quantityAvailable(variation.getQuantity_available())
                 .metadata(variation.getMetadata())
+                .active(variation.getIsActive())
                 .build();
     }
 

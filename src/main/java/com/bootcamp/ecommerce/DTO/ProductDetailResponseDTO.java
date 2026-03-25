@@ -18,5 +18,6 @@ public class ProductDetailResponseDTO {
     private String brand;
     private String description;
     private BasicCategoryDTO category;
+    private Boolean isActive;
     private List<ProductVariationResponse> variations;
 }

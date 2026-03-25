@@ -11,10 +11,6 @@ import lombok.Setter;
 public class CustomerRequestDTO {
 
     @Email(message = "Email must be valid")
-    @Pattern(
-            regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
-            message = "Email must contain a valid domain "
-    )
     @NotBlank(message = "Email is mandatory")
     private String email;
 

@@ -185,7 +185,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
-    public void sendPendingOrdersReminder(Seller seller, List<OrderProduct> items) {
+    public void sendPendingOrdersReminder(String email, String firstName, List<OrderProduct> items) {
 
         String subject = PENDING_ORDERS_SUBJECT;
 
@@ -197,9 +197,9 @@ public class EmailServiceImpl implements EmailService {
 
         String body = String.format(
                 PENDING_ORDERS_MESSAGE_PREFIX,
-                seller.getUser().getFirstName()
+                firstName
         ) + itemDetails + PENDING_ORDERS_MESSAGE_SUFFIX;
 
-        sendEmail(seller.getUser().getEmail(), subject, body);
+        sendEmail(email, subject, body);
     }
 }

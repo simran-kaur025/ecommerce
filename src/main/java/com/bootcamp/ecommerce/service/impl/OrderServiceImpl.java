@@ -593,7 +593,13 @@ public class OrderServiceImpl implements OrderService {
         }
 
         for (Map.Entry<Seller, List<OrderProduct>> entry : itemsBySeller.entrySet()) {
-            emailService.sendPendingOrdersReminder(entry.getKey(), entry.getValue());
+
+            Seller seller = entry.getKey();
+
+            String email = seller.getUser().getEmail();
+            String firstName=seller.getUser().getFirstName();
+
+            emailService.sendPendingOrdersReminder(email,firstName, entry.getValue());
         }
     }
 

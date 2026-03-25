@@ -35,7 +35,7 @@ public class CustomerController {
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/addresses")
+    @GetMapping("/address")
     public ResponseEntity<ResponseDTO> viewMyAddresses() {
 
         ResponseDTO addressDTO = customerProfileService.getMyAddress();
@@ -62,16 +62,15 @@ public class CustomerController {
     @PostMapping("/address")
     public ResponseEntity<ResponseDTO> addAddress(@Valid @RequestBody AddressDTO request) {
 
-        customerProfileService.addAddress(request);
+        ResponseDTO responseDTO = customerProfileService.addAddress(request);
+
+        HttpStatus status = "CREATED".equals(responseDTO.getStatus())
+                ? HttpStatus.CREATED
+                : HttpStatus.OK;
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(
-                        ResponseDTO.builder()
-                                .status("CREATED")
-                                .data("Address added successfully")
-                                .build()
-                );
+                .status(status)
+                .body(responseDTO);
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")

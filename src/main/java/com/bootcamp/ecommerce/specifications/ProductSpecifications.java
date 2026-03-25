@@ -20,10 +20,10 @@ public class ProductSpecifications {
 
 
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isFalse(root.get("isDeleted")));
 
             if (onlyActive) {
                 predicates.add(cb.isTrue(root.get("isActive")));
-                predicates.add(cb.isFalse(root.get("isDeleted")));
             }
 
             if (filters.containsKey("categoryIds")) {

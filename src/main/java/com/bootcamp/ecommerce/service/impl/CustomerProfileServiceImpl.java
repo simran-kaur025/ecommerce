@@ -154,7 +154,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
     }
 
 
-    public void addAddress(AddressDTO request) {
+    public ResponseDTO addAddress(AddressDTO request) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -168,8 +168,10 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
                 request.getState(),
                 request.getCountry(),
                 request.getZipCode())) {
-
-            throw new RuntimeException("Address already exists");
+                return ResponseDTO.builder()
+                    .status(Constant.SUCCESS)
+                    .data("Address already exists")
+                    .build();
         }
 
         Address address = new Address();
@@ -182,6 +184,10 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         address.setLabel(request.getLabel());
 
         addressRepository.save(address);
+        return ResponseDTO.builder()
+                .status("CREATED")
+                .data("Address added successfully")
+                .build();
     }
 
     public void deleteAddress(Long addressId) {

@@ -20,7 +20,7 @@ public interface EmailService {
 
     void sendAccountActivatedEmail(String email);
     void sendAccountDeactivatedEmail(String email);
-    void sendPendingOrdersReminder(Seller seller, List<OrderProduct> items);
+    void sendPendingOrdersReminder(String email,String firstName, List<OrderProduct> items);
 
     void sendEmail(String to, String subject, String body);
 }
